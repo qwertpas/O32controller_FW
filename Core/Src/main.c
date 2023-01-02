@@ -18,8 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "string.h"
-
+#include <string.h>
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -74,6 +73,7 @@ static void MX_ADC_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_USART1_UART_Init(void);
+static void Serialprint(char *);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -140,13 +140,22 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
+
 	while (1){
+
 		if (Xfer_Complete ==1){
 			/* Put I2C peripheral in listen mode process */
 			status = HAL_I2C_EnableListen_IT(&hi2c1);
 			Xfer_Complete =0;
 		}
-		HAL_Delay(41);
+
+		HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GPIO_PIN_SET);
+		HAL_Delay(40);
+		HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GPIO_PIN_RESET);
+		HAL_Delay(40);
+
+
+		Serialprint("pls work\n");
 
 
 
@@ -485,7 +494,7 @@ static void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 38400;
+  huart1.Init.BaudRate = 115200;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
@@ -539,6 +548,14 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 /**
+  * @brief  Sends a message over Serial (UART TX) for debugging.
+  * @param  message: The string to send
+ */
+void Serialprint(char *message){
+	HAL_UART_Transmit(&huart1, (uint8_t*)message, strlen(message), 1000);
+}
+
+/**
   * @brief  Tx Transfer completed callback.
   * @param  I2cHandle: I2C handle.
   * @note   This example shows a simple way to report end of IT Tx transfer, and
@@ -565,10 +582,7 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *I2cHandle){
 //  aRxBuffer[0]++;
 //  aRxBuffer[1]++;
 
-  HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GPIO_PIN_RESET);
-
 }
-
 
 
 /**
@@ -580,8 +594,6 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *I2cHandle){
   * @retval None
   */
 void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode){
-  HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GPIO_PIN_SET);
-
 
 
   Transfer_Direction = TransferDirection;
@@ -601,6 +613,9 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, ui
 //	  Xfer_Complete = 1;
 
 
+  }
+  if(status != HAL_OK){
+	  Error_Handler();
   }
 
 }
@@ -642,11 +657,13 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-//  __disable_irq();
-//  while (1)
-//  {
-//  }
+  __disable_irq();		//disable interrupts
+	NVIC_SystemReset(); //reset microcontroller, clearing any I2C faults. Maybe change to only
+						//reinit the I2C to save power.
+	while(1) {}			//if reset takes a while, do nothing
+
   /* USER CODE END Error_Handler_Debug */
+
 }
 
 #ifdef  USE_FULL_ASSERT
