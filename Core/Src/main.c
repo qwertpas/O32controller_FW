@@ -18,17 +18,23 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include <string.h>
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <string.h>
+#include <stdio.h>
+
 
 /* Function to get number of elements */
 #define COUNTOF(__BUFFER__)   (sizeof(__BUFFER__) / sizeof(*(__BUFFER__)))
 /* Size of Transmission and receive buffer */
 #define BUFFERSIZE 2
+/* 5 ADC channels in total: U, V, W, VBUS, TEMP */
+#define NBR_ADC 5
 
 
 /* USER CODE END Includes */
+
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
@@ -36,15 +42,19 @@ __IO uint32_t     Transfer_Direction = 0;
 __IO uint32_t     Xfer_Complete = 0;
 
 /* USER CODE END PTD */
+
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-/* Buffer used for transmission */
+/* Buffer used for I2C transmission */
 uint8_t aTxBuffer[BUFFERSIZE];
-/* Buffer used for reception */
+/* Buffer used for I2C reception */
 uint8_t aRxBuffer[BUFFERSIZE];
+/* Buffer for raw ADC readings */
+uint16_t adc_vals[5];
 
 /* USER CODE END PD */
+
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 
@@ -73,8 +83,8 @@ static void MX_ADC_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_USART1_UART_Init(void);
-static void Serialprint(char *);
 /* USER CODE BEGIN PFP */
+void Serialprint(char *);
 
 /* USER CODE END PFP */
 
@@ -126,8 +136,10 @@ int main(void)
   MX_SPI1_Init();
   MX_TIM1_Init();
   MX_USART1_UART_Init();
-
   /* USER CODE BEGIN 2 */
+
+
+
   HAL_StatusTypeDef status;
   status = HAL_I2C_EnableListen_IT(&hi2c1);
   if(status != HAL_OK){
@@ -135,27 +147,50 @@ int main(void)
 	  Error_Handler();
   }
 
+
+  HAL_ADCEx_Calibration_Start(&hadc);
+
+
+
+  char message[100];
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
-
 	while (1){
 
+		//restart I2C listener after a transfer
 		if (Xfer_Complete ==1){
 			/* Put I2C peripheral in listen mode process */
 			status = HAL_I2C_EnableListen_IT(&hi2c1);
 			Xfer_Complete =0;
 		}
 
+		//blink LED
 		HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GPIO_PIN_SET);
 		HAL_Delay(40);
 		HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GPIO_PIN_RESET);
 		HAL_Delay(40);
 
 
-		Serialprint("pls work\n");
+		//read all ADCs
+		HAL_ADC_Start(&hadc);
+	   // Poll ADC1 Perihperal & TimeOut = 1mSec
+		HAL_ADC_PollForConversion(&hadc, 1);
+
+		Serialprint("ADC:");
+//	    Read The ADC Conversion Result & Map It To PWM DutyCycle
+		for(int i = 0; i < NBR_ADC; i++){
+			adc_vals[i] = HAL_ADC_GetValue(&hadc);
+
+			sprintf(message, " %d", adc_vals[i]);
+			Serialprint(message);
+		}
+		Serialprint("\n");
+
+
+
 
 
 
@@ -247,7 +282,7 @@ static void MX_ADC_Init(void)
   hadc.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   hadc.Init.LowPowerAutoWait = DISABLE;
   hadc.Init.LowPowerAutoPowerOff = DISABLE;
-  hadc.Init.ContinuousConvMode = DISABLE;
+  hadc.Init.ContinuousConvMode = ENABLE;
   hadc.Init.DiscontinuousConvMode = DISABLE;
   hadc.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
@@ -291,6 +326,14 @@ static void MX_ADC_Init(void)
   {
     Error_Handler();
   }
+
+  /** Configure for the selected ADC regular channel to be converted.
+  */
+  sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
+  if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
   /* USER CODE BEGIN ADC_Init 2 */
 
   /* USER CODE END ADC_Init 2 */
@@ -314,13 +357,13 @@ static void MX_I2C1_Init(void)
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
   hi2c1.Init.Timing = 0x2000090E;
-  hi2c1.Init.OwnAddress1 = 18; //I2C address 9<<1
+  hi2c1.Init.OwnAddress1 = 18;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
   hi2c1.Init.OwnAddress2 = 0;
   hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
   hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE; //enable this when not replying
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
   if (HAL_I2C_Init(&hi2c1) != HAL_OK)
   {
     Error_Handler();
@@ -547,6 +590,9 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+
+
+
 /**
   * @brief  Sends a message over Serial (UART TX) for debugging.
   * @param  message: The string to send
@@ -565,8 +611,6 @@ void Serialprint(char *message){
 
 void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *I2cHandle){
   Xfer_Complete = 1;
-//  aTxBuffer[0]++;
-//  aTxBuffer[1]++;
 }
 
 
@@ -578,10 +622,6 @@ void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *I2cHandle){
   * @retval None
   */
 void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *I2cHandle){
-//  Xfer_Complete = 1;
-//  aRxBuffer[0]++;
-//  aRxBuffer[1]++;
-
 }
 
 
@@ -663,7 +703,6 @@ void Error_Handler(void)
 	while(1) {}			//if reset takes a while, do nothing
 
   /* USER CODE END Error_Handler_Debug */
-
 }
 
 #ifdef  USE_FULL_ASSERT

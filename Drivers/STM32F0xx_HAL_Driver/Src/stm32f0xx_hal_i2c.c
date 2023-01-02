@@ -4310,8 +4310,10 @@ HAL_StatusTypeDef HAL_I2C_Slave_Seq_Receive_DMA(I2C_HandleTypeDef *hi2c, uint8_t
   *                the configuration information for the specified I2C.
   * @retval HAL status
   */
-HAL_StatusTypeDef HAL_I2C_EnableListen_IT(I2C_HandleTypeDef *hi2c){
-  if (hi2c->State == HAL_I2C_STATE_READY){
+HAL_StatusTypeDef HAL_I2C_EnableListen_IT(I2C_HandleTypeDef *hi2c)
+{
+  if (hi2c->State == HAL_I2C_STATE_READY)
+  {
     hi2c->State = HAL_I2C_STATE_LISTEN;
     hi2c->XferISR = I2C_Slave_ISR_IT;
 
@@ -4319,7 +4321,9 @@ HAL_StatusTypeDef HAL_I2C_EnableListen_IT(I2C_HandleTypeDef *hi2c){
     I2C_Enable_IRQ(hi2c, I2C_XFER_LISTEN_IT);
 
     return HAL_OK;
-  }else{
+  }
+  else
+  {
     return HAL_BUSY;
   }
 }
