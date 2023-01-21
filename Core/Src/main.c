@@ -29,8 +29,13 @@
 #define COUNTOF(__BUFFER__)   (sizeof(__BUFFER__) / sizeof(*(__BUFFER__)))
 /* Size of Transmission and receive buffer */
 #define BUFFERSIZE 2
-/* 5 ADC channels in total: U, V, W, VBUS, TEMP */
-#define NBR_ADC 5
+/* 6 ADC channels in total:
+ * ADC0: Phase V current
+ * ADC3: Phase W current
+ * ADC4: VBUS sense (5.12x voltage divider)
+ * ADC9: Phase U current
+ * then TEMP and VREF */
+#define NBR_ADC 6
 
 
 /* USER CODE END Includes */
@@ -51,7 +56,7 @@ uint8_t aTxBuffer[BUFFERSIZE];
 /* Buffer used for I2C reception */
 uint8_t aRxBuffer[BUFFERSIZE];
 /* Buffer for raw ADC readings */
-uint16_t adc_vals[5];
+uint16_t adc_vals[NBR_ADC];
 
 /* USER CODE END PD */
 
@@ -62,6 +67,7 @@ uint16_t adc_vals[5];
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc;
+DMA_HandleTypeDef hdma_adc;
 
 I2C_HandleTypeDef hi2c1;
 
@@ -78,6 +84,7 @@ UART_HandleTypeDef huart1;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_ADC_Init(void);
 static void MX_SPI1_Init(void);
@@ -131,6 +138,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_I2C1_Init();
   MX_ADC_Init();
   MX_SPI1_Init();
@@ -148,11 +156,18 @@ int main(void)
   }
 
 
-  HAL_ADCEx_Calibration_Start(&hadc);
+//  HAL_ADCEx_Calibration_Start(&hadc);
+
+  //don't run when not connected to actual power i think
+//  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+//  TIM1->CCR1 = 500;
+
 
 
 
   char message[100];
+
+
 
   /* USER CODE END 2 */
 
@@ -175,19 +190,24 @@ int main(void)
 
 
 		//read all ADCs
-		HAL_ADC_Start(&hadc);
+//		HAL_ADC_Start(&hadc);
 	   // Poll ADC1 Perihperal & TimeOut = 1mSec
-		HAL_ADC_PollForConversion(&hadc, 1);
+//		HAL_ADC_PollForConversion(&hadc, 1);
+		HAL_ADC_Start_DMA(&hadc, (uint32_t *)adc_vals, NBR_ADC);  // start the adc in dma mode
 
-		Serialprint("ADC:");
-//	    Read The ADC Conversion Result & Map It To PWM DutyCycle
+
+		Serialprint("ADC: \n");
 		for(int i = 0; i < NBR_ADC; i++){
-			adc_vals[i] = HAL_ADC_GetValue(&hadc);
-
-			sprintf(message, " %d", adc_vals[i]);
-			Serialprint(message);
+			if(i == 2){ //Vbus sensor
+				sprintf(message, " %d", 330*adc_vals[i] * 512 / 4095);
+				Serialprint(message);
+			}else{
+				sprintf(message, " %d", adc_vals[i]);
+				Serialprint(message);
+			}
 		}
 		Serialprint("\n");
+
 
 
 
@@ -282,13 +302,12 @@ static void MX_ADC_Init(void)
   hadc.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   hadc.Init.LowPowerAutoWait = DISABLE;
   hadc.Init.LowPowerAutoPowerOff = DISABLE;
-  hadc.Init.ContinuousConvMode = ENABLE;
+  hadc.Init.ContinuousConvMode = DISABLE;
   hadc.Init.DiscontinuousConvMode = DISABLE;
   hadc.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc.Init.DMAContinuousRequests = DISABLE;
   hadc.Init.Overrun = ADC_OVR_DATA_PRESERVED;
-
   if (HAL_ADC_Init(&hadc) != HAL_OK)
   {
     Error_Handler();
@@ -298,7 +317,7 @@ static void MX_ADC_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_0;
   sConfig.Rank = ADC_RANK_CHANNEL_NUMBER;
-  sConfig.SamplingTime = ADC_SAMPLETIME_28CYCLES_5;
+  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
   if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -331,6 +350,14 @@ static void MX_ADC_Init(void)
   /** Configure for the selected ADC regular channel to be converted.
   */
   sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
+  if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure for the selected ADC regular channel to be converted.
+  */
+  sConfig.Channel = ADC_CHANNEL_VREFINT;
   if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -554,6 +581,22 @@ static void MX_USART1_UART_Init(void)
   /* USER CODE BEGIN USART1_Init 2 */
 
   /* USER CODE END USART1_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 
 }
 
