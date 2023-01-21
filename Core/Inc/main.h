@@ -67,8 +67,6 @@ void Error_Handler(void);
 #define OP_V_O_GPIO_Port GPIOA
 #define OP_W_O_Pin GPIO_PIN_3
 #define OP_W_O_GPIO_Port GPIOA
-#define BUS_SENSE_Pin GPIO_PIN_4
-#define BUS_SENSE_GPIO_Port GPIOA
 #define OP_U_O_Pin GPIO_PIN_1
 #define OP_U_O_GPIO_Port GPIOB
 #define OC_COMP_INT_Pin GPIO_PIN_12

@@ -160,7 +160,7 @@ int main(void)
 
   //don't run when not connected to actual power i think
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-TIM1->CCR1 = 0;
+  TIM1->CCR1 = 0;
 
 
 
@@ -185,10 +185,10 @@ TIM1->CCR1 = 0;
 		//blink LED
 		HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GPIO_PIN_SET);
 		TIM1->CCR1 = 20;
-		HAL_Delay(1);
+		HAL_Delay(20);
 		HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GPIO_PIN_RESET);
 		TIM1->CCR1 = 0;
-		HAL_Delay(1);
+		HAL_Delay(20);
 
 
 		//read all ADCs
@@ -501,7 +501,7 @@ static void MX_TIM1_Init(void)
   }
   sSlaveConfig.SlaveMode = TIM_SLAVEMODE_GATED;
   sSlaveConfig.InputTrigger = TIM_TS_ETRF;
-  sSlaveConfig.TriggerPolarity = TIM_TRIGGERPOLARITY_NONINVERTED;
+  sSlaveConfig.TriggerPolarity = TIM_TRIGGERPOLARITY_INVERTED;
   sSlaveConfig.TriggerPrescaler = TIM_TRIGGERPRESCALER_DIV1;
   sSlaveConfig.TriggerFilter = 0;
   if (HAL_TIM_SlaveConfigSynchro(&htim1, &sSlaveConfig) != HAL_OK)
@@ -520,11 +520,12 @@ static void MX_TIM1_Init(void)
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
-  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_SET;
   if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
   {
     Error_Handler();
   }
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
   if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
   {
     Error_Handler();
@@ -536,8 +537,8 @@ static void MX_TIM1_Init(void)
   sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
   sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
   sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-  sBreakDeadTimeConfig.DeadTime = 0;
-  sBreakDeadTimeConfig.BreakState = TIM_BREAK_ENABLE;
+  sBreakDeadTimeConfig.DeadTime = 40;
+  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
   sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
   sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
   if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
