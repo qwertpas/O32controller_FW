@@ -159,8 +159,8 @@ int main(void)
 //  HAL_ADCEx_Calibration_Start(&hadc);
 
   //don't run when not connected to actual power i think
-//  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-//  TIM1->CCR1 = 500;
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+TIM1->CCR1 = 0;
 
 
 
@@ -184,9 +184,11 @@ int main(void)
 
 		//blink LED
 		HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GPIO_PIN_SET);
-		HAL_Delay(40);
+		TIM1->CCR1 = 20;
+		HAL_Delay(1);
 		HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GPIO_PIN_RESET);
-		HAL_Delay(40);
+		TIM1->CCR1 = 0;
+		HAL_Delay(1);
 
 
 		//read all ADCs
@@ -478,9 +480,9 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 0;
+  htim1.Init.Prescaler = 4;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 65535;
+  htim1.Init.Period = 1023;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
