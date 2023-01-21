@@ -159,10 +159,17 @@ int main(void)
 //  HAL_ADCEx_Calibration_Start(&hadc);
 
   //don't run when not connected to actual power i think
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-  TIM1->CCR1 = 0;
 
 
+	HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_SET);
+
+
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1); // turn on complementary channel
+
+
+	TIM1->CCR1 = 0;
 
 
   char message[100];
@@ -173,6 +180,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  int duty = 0;
 	while (1){
 
 		//restart I2C listener after a transfer
@@ -184,11 +192,23 @@ int main(void)
 
 		//blink LED
 		HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GPIO_PIN_SET);
-		TIM1->CCR1 = 20;
-		HAL_Delay(20);
+//		TIM1->CCR1 = 20;
+		TIM1->CCR1 = duty;
+		duty++;
+		if(duty > 500) duty=0;
+
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_RESET);
+
+		HAL_Delay(10);
 		HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GPIO_PIN_RESET);
-		TIM1->CCR1 = 0;
-		HAL_Delay(20);
+
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_SET);
+
+//		TIM1->CCR1 = 0;
+//		TIM1->CCR1 = 0;
+		HAL_Delay(10);
+
+
 
 
 		//read all ADCs
@@ -471,7 +491,6 @@ static void MX_TIM1_Init(void)
   /* USER CODE END TIM1_Init 0 */
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_SlaveConfigTypeDef sSlaveConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
   TIM_OC_InitTypeDef sConfigOC = {0};
   TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
@@ -482,7 +501,7 @@ static void MX_TIM1_Init(void)
   htim1.Instance = TIM1;
   htim1.Init.Prescaler = 4;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 1023;
+  htim1.Init.Period = 512;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -499,15 +518,6 @@ static void MX_TIM1_Init(void)
   {
     Error_Handler();
   }
-  sSlaveConfig.SlaveMode = TIM_SLAVEMODE_GATED;
-  sSlaveConfig.InputTrigger = TIM_TS_ETRF;
-  sSlaveConfig.TriggerPolarity = TIM_TRIGGERPOLARITY_INVERTED;
-  sSlaveConfig.TriggerPrescaler = TIM_TRIGGERPRESCALER_DIV1;
-  sSlaveConfig.TriggerFilter = 0;
-  if (HAL_TIM_SlaveConfigSynchro(&htim1, &sSlaveConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
@@ -519,25 +529,21 @@ static void MX_TIM1_Init(void)
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
-  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_SET;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_SET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
   if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
   {
     Error_Handler();
   }
-  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
   if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
   {
     Error_Handler();
   }
   sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
   sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
   sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-  sBreakDeadTimeConfig.DeadTime = 40;
+  sBreakDeadTimeConfig.DeadTime = 200;
   sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
   sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
   sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
@@ -620,12 +626,22 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin|MAG_NCS_Pin|OC_TH_STBY2_Pin|OC_TH_STBY1_Pin, GPIO_PIN_RESET);
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_RESET);
+
   /*Configure GPIO pins : LED_STATUS_Pin MAG_NCS_Pin OC_TH_STBY2_Pin OC_TH_STBY1_Pin */
   GPIO_InitStruct.Pin = LED_STATUS_Pin|MAG_NCS_Pin|OC_TH_STBY2_Pin|OC_TH_STBY1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PB15 */
+  GPIO_InitStruct.Pin = GPIO_PIN_15;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : OC_SEL_Pin */
   GPIO_InitStruct.Pin = OC_SEL_Pin;

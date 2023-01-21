@@ -333,6 +333,7 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
     __HAL_RCC_GPIOA_CLK_ENABLE();
     /**TIM1 GPIO Configuration
     PB12     ------> TIM1_BKIN
+    PA10     ------> TIM1_CH3
     PA12     ------> TIM1_ETR
     */
     GPIO_InitStruct.Pin = OC_COMP_INT_Pin;
@@ -342,12 +343,12 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
     GPIO_InitStruct.Alternate = GPIO_AF2_TIM1;
     HAL_GPIO_Init(OC_COMP_INT_GPIO_Port, &GPIO_InitStruct);
 
-    GPIO_InitStruct.Pin = OC_COMP_INT2_Pin;
+    GPIO_InitStruct.Pin = HSW_Pin|OC_COMP_INT2_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     GPIO_InitStruct.Alternate = GPIO_AF2_TIM1;
-    HAL_GPIO_Init(OC_COMP_INT2_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* USER CODE BEGIN TIM1_MspInit 1 */
 
@@ -370,19 +371,17 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim)
     /**TIM1 GPIO Configuration
     PB13     ------> TIM1_CH1N
     PB14     ------> TIM1_CH2N
-    PB15     ------> TIM1_CH3N
     PA8     ------> TIM1_CH1
     PA9     ------> TIM1_CH2
-    PA10     ------> TIM1_CH3
     */
-    GPIO_InitStruct.Pin = LSU_Pin|LSV_Pin|LSW_Pin;
+    GPIO_InitStruct.Pin = LSU_Pin|LSV_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     GPIO_InitStruct.Alternate = GPIO_AF2_TIM1;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-    GPIO_InitStruct.Pin = HSU_Pin|HSV_Pin|HSW_Pin;
+    GPIO_InitStruct.Pin = HSU_Pin|HSV_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -415,13 +414,12 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
     PB12     ------> TIM1_BKIN
     PB13     ------> TIM1_CH1N
     PB14     ------> TIM1_CH2N
-    PB15     ------> TIM1_CH3N
     PA8     ------> TIM1_CH1
     PA9     ------> TIM1_CH2
     PA10     ------> TIM1_CH3
     PA12     ------> TIM1_ETR
     */
-    HAL_GPIO_DeInit(GPIOB, OC_COMP_INT_Pin|LSU_Pin|LSV_Pin|LSW_Pin);
+    HAL_GPIO_DeInit(GPIOB, OC_COMP_INT_Pin|LSU_Pin|LSV_Pin);
 
     HAL_GPIO_DeInit(GPIOA, HSU_Pin|HSV_Pin|HSW_Pin|OC_COMP_INT2_Pin);
 
