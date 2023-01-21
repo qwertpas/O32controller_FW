@@ -79,8 +79,6 @@ void Error_Handler(void);
 #define HSU_GPIO_Port GPIOA
 #define HSV_Pin GPIO_PIN_9
 #define HSV_GPIO_Port GPIOA
-#define HSW_Pin GPIO_PIN_10
-#define HSW_GPIO_Port GPIOA
 #define OC_SEL_Pin GPIO_PIN_11
 #define OC_SEL_GPIO_Port GPIOA
 #define OC_COMP_INT2_Pin GPIO_PIN_12
