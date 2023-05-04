@@ -18,3 +18,5 @@ while(Wire.available()) {
     Serial.print(c, HEX);       // print the response
 }
 ```
+
+Hardware here: https://github.com/qwertpas/O32controller
