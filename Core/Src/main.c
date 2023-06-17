@@ -1,36 +1,48 @@
 /* USER CODE BEGIN Header */
-/**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2023 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <string.h>
+#include <stdio.h>
+
+
+/* Function to get number of elements */
+#define COUNTOF(__BUFFER__)   (sizeof(__BUFFER__) / sizeof(*(__BUFFER__)))
+/* Size of Transmission and receive buffer */
+#define BUFFERSIZE 2
+/* 6 ADC channels in total:
+ * ADC0: Phase V current
+ * ADC3: Phase W current
+ * ADC4: VBUS sense (5.12x voltage divider)
+ * ADC9: Phase U current
+ * then TEMP and VREF */
+#define NBR_ADC 6
+
 
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
+__IO uint32_t     Transfer_Direction = 0;
+__IO uint32_t     Xfer_Complete = 0;
+
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+/* Buffer used for I2C transmission */
+uint8_t aTxBuffer[BUFFERSIZE];
+/* Buffer used for I2C reception */
+uint8_t aRxBuffer[BUFFERSIZE];
+/* Buffer for raw ADC readings */
+uint16_t adc_vals[NBR_ADC];
 
 /* USER CODE END PD */
 
@@ -66,6 +78,18 @@ static void MX_TIM1_Init(void);
 static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
+#ifdef __GNUC__
+#define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
+#else
+#define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
+#endif
+
+PUTCHAR_PROTOTYPE
+{
+  HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
+  return ch;
+}
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -90,6 +114,16 @@ int main(void)
 
   /* USER CODE BEGIN Init */
 
+	aRxBuffer[0]=0x00;
+	aRxBuffer[1]=0x00;
+	aRxBuffer[2]=0x00;
+	aRxBuffer[3]=0x00;
+
+	aTxBuffer[0]=0xAA;
+	aTxBuffer[1]=0xBB;
+	aTxBuffer[2]=0xCC;
+	aTxBuffer[3]=0xDD;
+
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -109,16 +143,132 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
+
+
+  HAL_StatusTypeDef status;
+  status = HAL_I2C_EnableListen_IT(&hi2c1);
+  if(status != HAL_OK){
+	  /* Transfer error in reception process */
+	  Error_Handler();
+  }
+
+
+  HAL_ADCEx_Calibration_Start(&hadc);
+
+  //don't run when not connected to actual power i think
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1); // turn on complementary channel
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2); // turn on complementary channel
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3); // turn on complementary channel
+
+
+	TIM1->CCR1 = 0;
+	TIM1->CCR2 = 0;
+	TIM1->CCR3 = 0;
+
+
+	HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GPIO_PIN_RESET);
+	HAL_Delay(3000);
+	HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GPIO_PIN_SET);
+
+
+  //get out of standby mode to allow gate drive
+	HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_SET);
+
+
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+
+	int step = 0;
+	int mag = 20;
+
+	while (1){
+
+		//restart I2C listener after a transfer
+		if (Xfer_Complete ==1){
+			/* Put I2C peripheral in listen mode process */
+			status = HAL_I2C_EnableListen_IT(&hi2c1);
+			Xfer_Complete =0;
+		}
+
+		//blink LED
+//		HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GPIO_PIN_SET);
+//		TIM1->CCR1 = 20;
+//		TIM1->CCR1 = duty;
+//		duty++;
+//		if(duty > 512) duty=0;
+
+
+//		HAL_Delay(10);
+//		HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GPIO_PIN_RESET);
+
+//		TIM1->CCR1 = 0;
+//		TIM1->CCR1 = 0;
+//		HAL_Delay(10);
+
+		if(step==0){
+			TIM1->CCR1 = mag;
+			TIM1->CCR2 = 0;
+			TIM1->CCR3 = 0;
+		}
+		if(step==1){
+			TIM1->CCR1 = mag;
+			TIM1->CCR2 = mag;
+			TIM1->CCR3 = 0;
+		}
+		if(step==2){
+			TIM1->CCR1 = 0;
+			TIM1->CCR2 = mag;
+			TIM1->CCR3 = 0;
+		}
+		if(step==3){
+			TIM1->CCR1 = 0;
+			TIM1->CCR2 = mag;
+			TIM1->CCR3 = mag;
+		}
+		if(step==4){
+			TIM1->CCR1 = 0;
+			TIM1->CCR2 = 0;
+			TIM1->CCR3 = mag;
+		}
+		if(step==5){
+			TIM1->CCR1 = mag;
+			TIM1->CCR2 = 0;
+			TIM1->CCR3 = mag;
+		}
+		step = (step + 1) % 6;
+
+		HAL_Delay(3);
+//		HAL_Delay(1);
+
+
+
+		//read all ADCs
+		HAL_ADC_Start_DMA(&hadc, (uint32_t *)adc_vals, NBR_ADC);  // start the adc in dma mode
+
+//		printf("ADC: \n");
+//		for(int i = 0; i < NBR_ADC; i++){
+//			if(i == 2){ //Vbus sensor
+//				printf(" %d", 330*adc_vals[i] * 512 / 4095);
+//			}else{
+//				printf(" %d", adc_vals[i]);
+//			}
+//		}
+//		printf("\n");
+
+
+
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+	}
   /* USER CODE END 3 */
 }
 
@@ -504,8 +654,6 @@ static void MX_DMA_Init(void)
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOF_CLK_ENABLE();
@@ -528,11 +676,106 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(OC_SEL_GPIO_Port, &GPIO_InitStruct);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
+
+
+
+
+/**
+  * @brief  Sends a message over Serial (UART TX) for debugging.
+  * @param  message: The string to send
+ */
+void Serialprint(char *message){
+	HAL_UART_Transmit(&huart1, (uint8_t*)message, strlen(message), 1000);
+}
+
+/**
+  * @brief  Tx Transfer completed callback.
+  * @param  I2cHandle: I2C handle.
+  * @note   This example shows a simple way to report end of IT Tx transfer, and
+  *         you can add your own implementation.
+  * @retval None
+  */
+
+void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *I2cHandle){
+  Xfer_Complete = 1;
+}
+
+
+/**
+  * @brief  Rx Transfer completed callback.
+  * @param  I2cHandle: I2C handle
+  * @note   This example shows a simple way to report end of IT Rx transfer, and
+  *         you can add your own implementation.
+  * @retval None
+  */
+void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *I2cHandle){
+}
+
+
+/**
+  * @brief  Slave Address Match callback.
+  * @param  hi2c Pointer to a I2C_HandleTypeDef structure that contains
+  *                the configuration information for the specified I2C.
+  * @param  TransferDirection: Master request Transfer Direction (Write/Read), value of @ref I2C_XferOptions_definition
+  * @param  AddrMatchCode: Address Match Code
+  * @retval None
+  */
+void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode){
+
+
+  Transfer_Direction = TransferDirection;
+  HAL_StatusTypeDef status;
+  if (Transfer_Direction != 0){
+     /*##- Start the transmission process #####################################*/
+	  /* While the I2C in reception process, user can transmit data through "aTxBuffer" buffer */
+	  status = HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, (uint8_t *)aTxBuffer, BUFFERSIZE, I2C_FIRST_AND_LAST_FRAME);
+
+
+  }else{
+      /*##- Put I2C peripheral in reception process ###########################*/
+	  status = HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, (uint8_t *)aRxBuffer, BUFFERSIZE, I2C_FIRST_AND_LAST_FRAME);
+
+	  aTxBuffer[0] = aRxBuffer[0] + 1;
+	  aTxBuffer[1] = aRxBuffer[1] + 1;
+//	  Xfer_Complete = 1;
+
+
+  }
+  if(status != HAL_OK){
+	  Error_Handler();
+  }
+
+}
+
+/**
+  * @brief  Listen Complete callback.
+  * @param  hi2c Pointer to a I2C_HandleTypeDef structure that contains
+  *                the configuration information for the specified I2C.
+  * @retval None
+  */
+void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c)
+{
+}
+
+/**
+  * @brief  I2C error callbacks.
+  * @param  I2cHandle: I2C handle
+  * @note   This example shows a simple way to report transfer error, and you can
+  *         add your own implementation.
+  * @retval None
+  */
+void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *I2cHandle){
+  /** Error_Handler() function is called when error occurs.
+    * 1- When Slave doesn't acknowledge its address, Master restarts communication.
+    * 2- When Master doesn't acknowledge the last data transferred, Slave doesn't care in this example.
+    */
+  if (HAL_I2C_GetError(I2cHandle) != HAL_I2C_ERROR_AF){
+    Error_Handler();
+  }
+}
 
 /* USER CODE END 4 */
 
@@ -544,10 +787,11 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
-  {
-  }
+  __disable_irq();		//disable interrupts
+	NVIC_SystemReset(); //reset microcontroller, clearing any I2C faults. Maybe change to only
+						//reinit the I2C to save power.
+	while(1) {}			//if reset takes a while, do nothing
+
   /* USER CODE END Error_Handler_Debug */
 }
 
