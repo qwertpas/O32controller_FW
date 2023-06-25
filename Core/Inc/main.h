@@ -65,6 +65,8 @@ void Error_Handler(void);
 #define MAG_NCS_GPIO_Port GPIOF
 #define OP_V_O_Pin GPIO_PIN_0
 #define OP_V_O_GPIO_Port GPIOA
+#define USART_DE_Pin GPIO_PIN_1
+#define USART_DE_GPIO_Port GPIOA
 #define OP_W_O_Pin GPIO_PIN_3
 #define OP_W_O_GPIO_Port GPIOA
 #define OP_U_O_Pin GPIO_PIN_1

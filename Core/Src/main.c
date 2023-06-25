@@ -13,7 +13,7 @@
 /* Function to get number of elements */
 #define COUNTOF(__BUFFER__)   (sizeof(__BUFFER__) / sizeof(*(__BUFFER__)))
 /* Size of Transmission and receive buffer */
-#define BUFFERSIZE 2
+#define I2CSIZE 2
 /* 6 ADC channels in total:
  * ADC0: Phase V current
  * ADC3: Phase W current
@@ -21,6 +21,9 @@
  * ADC9: Phase U current
  * then TEMP and VREF */
 #define NBR_ADC 6
+
+#define GREEN 0 //status LED
+#define RED 1
 
 
 /* USER CODE END Includes */
@@ -37,12 +40,25 @@ __IO uint32_t     Xfer_Complete = 0;
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-/* Buffer used for I2C transmission */
-uint8_t aTxBuffer[BUFFERSIZE];
-/* Buffer used for I2C reception */
-uint8_t aRxBuffer[BUFFERSIZE];
+#define B_PAT "%c%c%c%c%c%c%c%c"
+#define TO_B(byte)  \
+  ((byte) & 0x80 ? '1' : '0'), \
+  ((byte) & 0x40 ? '1' : '0'), \
+  ((byte) & 0x20 ? '1' : '0'), \
+  ((byte) & 0x10 ? '1' : '0'), \
+  ((byte) & 0x08 ? '1' : '0'), \
+  ((byte) & 0x04 ? '1' : '0'), \
+  ((byte) & 0x02 ? '1' : '0'), \
+  ((byte) & 0x01 ? '1' : '0')
+
+uint8_t i2c_TX[I2CSIZE];
+uint8_t i2c_RX[I2CSIZE];
+
 /* Buffer for raw ADC readings */
 uint16_t adc_vals[NBR_ADC];
+
+uint8_t spi_TX[2];
+uint8_t spi_RX[2];
 
 /* USER CODE END PD */
 
@@ -114,15 +130,11 @@ int main(void)
 
   /* USER CODE BEGIN Init */
 
-	aRxBuffer[0]=0x00;
-	aRxBuffer[1]=0x00;
-	aRxBuffer[2]=0x00;
-	aRxBuffer[3]=0x00;
+	i2c_RX[0]=0x00;
+	i2c_RX[1]=0x00;
 
-	aTxBuffer[0]=0xAA;
-	aTxBuffer[1]=0xBB;
-	aTxBuffer[2]=0xCC;
-	aTxBuffer[3]=0xDD;
+	i2c_TX[0]=0xAA;
+	i2c_TX[1]=0xBB;
 
   /* USER CODE END Init */
 
@@ -144,13 +156,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
 
-
-  HAL_StatusTypeDef status;
-  status = HAL_I2C_EnableListen_IT(&hi2c1);
-  if(status != HAL_OK){
-	  /* Transfer error in reception process */
-	  Error_Handler();
-  }
+  //disable RS485 tranceiver driver
+  HAL_GPIO_WritePin(USART_DE_GPIO_Port, USART_DE_Pin, 0);
 
 
   HAL_ADCEx_Calibration_Start(&hadc);
@@ -168,11 +175,19 @@ int main(void)
 	TIM1->CCR2 = 0;
 	TIM1->CCR3 = 0;
 
+	//green, wait 3 seconds, then red to give time for flashing
+	HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, RED);
+	HAL_Delay(2000);
+	HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GREEN);
+	HAL_Delay(100);
 
-	HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GPIO_PIN_RESET);
-	HAL_Delay(3000);
-	HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GPIO_PIN_SET);
 
+	  HAL_StatusTypeDef status;
+	  status = HAL_I2C_EnableListen_IT(&hi2c1);
+	  if(status != HAL_OK){
+		  /* Transfer error in reception process */
+		  Error_Handler();
+	  }
 
   //get out of standby mode to allow gate drive
 	HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_SET);
@@ -188,6 +203,10 @@ int main(void)
 	int step = 0;
 	int mag = 20;
 
+
+
+
+
 	while (1){
 
 		//restart I2C listener after a transfer
@@ -195,22 +214,22 @@ int main(void)
 			/* Put I2C peripheral in listen mode process */
 			status = HAL_I2C_EnableListen_IT(&hi2c1);
 			Xfer_Complete =0;
+			HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GREEN);
 		}
 
-		//blink LED
-//		HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GPIO_PIN_SET);
-//		TIM1->CCR1 = 20;
-//		TIM1->CCR1 = duty;
-//		duty++;
-//		if(duty > 512) duty=0;
+//		printf("i2c: %X \r\n", i2c_RX[0]);
 
+		HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 0);
+		status = HAL_SPI_TransmitReceive(&hspi1, spi_TX, spi_RX, 2, HAL_MAX_DELAY);
+		HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 1);
 
-//		HAL_Delay(10);
-//		HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GPIO_PIN_RESET);
+		if(status == HAL_OK){
+			int16_t angle = (spi_RX[0] << 8) + spi_RX[1];
+			printf("angle: %d \n", angle);
+		}else{
+//			printf("HAL SPI error \n");
+		}
 
-//		TIM1->CCR1 = 0;
-//		TIM1->CCR1 = 0;
-//		HAL_Delay(10);
 
 		if(step==0){
 			TIM1->CCR1 = mag;
@@ -244,8 +263,18 @@ int main(void)
 		}
 		step = (step + 1) % 6;
 
-		HAL_Delay(3);
-//		HAL_Delay(1);
+//		HAL_Delay(3);
+
+		int cmd = i2c_RX[0];
+		if(cmd == 0){
+			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_RESET);
+		}else{
+			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_SET);
+			cmd *= 2;
+		}
+		HAL_Delay(cmd);
 
 
 
@@ -481,8 +510,8 @@ static void MX_SPI1_Init(void)
   hspi1.Instance = SPI1;
   hspi1.Init.Mode = SPI_MODE_MASTER;
   hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi1.Init.DataSize = SPI_DATASIZE_4BIT;
-  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_HIGH;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
   hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
@@ -620,7 +649,7 @@ static void MX_USART1_UART_Init(void)
   huart1.Init.OverSampling = UART_OVERSAMPLING_16;
   huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
   huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_RS485Ex_Init(&huart1, UART_DE_POLARITY_HIGH, 0, 0) != HAL_OK)
+  if (HAL_UART_Init(&huart1) != HAL_OK)
   {
     Error_Handler();
   }
@@ -654,6 +683,8 @@ static void MX_DMA_Init(void)
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
+/* USER CODE BEGIN MX_GPIO_Init_1 */
+/* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOF_CLK_ENABLE();
@@ -663,6 +694,9 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin|MAG_NCS_Pin|OC_TH_STBY2_Pin|OC_TH_STBY1_Pin, GPIO_PIN_RESET);
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(USART_DE_GPIO_Port, USART_DE_Pin, GPIO_PIN_RESET);
+
   /*Configure GPIO pins : LED_STATUS_Pin MAG_NCS_Pin OC_TH_STBY2_Pin OC_TH_STBY1_Pin */
   GPIO_InitStruct.Pin = LED_STATUS_Pin|MAG_NCS_Pin|OC_TH_STBY2_Pin|OC_TH_STBY1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -670,26 +704,25 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : USART_DE_Pin */
+  GPIO_InitStruct.Pin = USART_DE_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(USART_DE_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pin : OC_SEL_Pin */
   GPIO_InitStruct.Pin = OC_SEL_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(OC_SEL_GPIO_Port, &GPIO_InitStruct);
 
+/* USER CODE BEGIN MX_GPIO_Init_2 */
+/* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
 
-
-
-
-/**
-  * @brief  Sends a message over Serial (UART TX) for debugging.
-  * @param  message: The string to send
- */
-void Serialprint(char *message){
-	HAL_UART_Transmit(&huart1, (uint8_t*)message, strlen(message), 1000);
-}
 
 /**
   * @brief  Tx Transfer completed callback.
@@ -725,23 +758,19 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *I2cHandle){
   */
 void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode){
 
+	HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, RED);
 
   Transfer_Direction = TransferDirection;
   HAL_StatusTypeDef status;
   if (Transfer_Direction != 0){
-     /*##- Start the transmission process #####################################*/
-	  /* While the I2C in reception process, user can transmit data through "aTxBuffer" buffer */
-	  status = HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, (uint8_t *)aTxBuffer, BUFFERSIZE, I2C_FIRST_AND_LAST_FRAME);
+	  status = HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, (uint8_t *)i2c_TX, I2CSIZE, I2C_FIRST_AND_LAST_FRAME);
 
 
   }else{
-      /*##- Put I2C peripheral in reception process ###########################*/
-	  status = HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, (uint8_t *)aRxBuffer, BUFFERSIZE, I2C_FIRST_AND_LAST_FRAME);
+	  status = HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, (uint8_t *)i2c_RX, I2CSIZE, I2C_FIRST_AND_LAST_FRAME);
 
-	  aTxBuffer[0] = aRxBuffer[0] + 1;
-	  aTxBuffer[1] = aRxBuffer[1] + 1;
-//	  Xfer_Complete = 1;
-
+	  i2c_TX[0] = i2c_RX[0] + 1;
+	  i2c_TX[1] = i2c_RX[1] + 1;
 
   }
   if(status != HAL_OK){
@@ -787,6 +816,7 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
+	printf("ERROR HANDLER \n");
   __disable_irq();		//disable interrupts
 	NVIC_SystemReset(); //reset microcontroller, clearing any I2C faults. Maybe change to only
 						//reinit the I2C to save power.
