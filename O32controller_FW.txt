@@ -1,0 +1,152 @@
+Configuration	O32controller_FW
+STM32CubeMX 	6.8.1
+Date	06/25/2023
+MCU	STM32F031C6Tx
+
+
+
+PERIPHERALS	MODES	FUNCTIONS	PINS
+ADC	IN0	ADC_IN0	PA0
+ADC	IN3	ADC_IN3	PA3
+ADC	IN4	ADC_IN4	PA4
+ADC	IN9	ADC_IN9	PB1
+ADC	Single-ended	ADC_TempSens_Input	VP_ADC_TempSens_Input
+ADC	Vrefint Channel	ADC_Vref_Input	VP_ADC_Vref_Input
+I2C1	I2C	I2C1_SCL	PB6
+I2C1	I2C	I2C1_SDA	PB7
+SPI1	Full-Duplex Master	SPI1_MISO	PA6
+SPI1	Full-Duplex Master	SPI1_MOSI	PA7
+SPI1	Full-Duplex Master	SPI1_SCK	PA5
+SYS	Serial_Wire	SYS_SWCLK	PA14
+SYS	Serial_Wire	SYS_SWDIO	PA13
+SYS	SysTick	SYS_VS_Systick	VP_SYS_VS_Systick
+TIM1	Gated Mode	TIM1_VS_ControllerModeGated	VP_TIM1_VS_ControllerModeGated
+TIM1	ETR1	TIM1_ETR	PA12
+TIM1	Internal Clock	TIM1_VS_ClockSourceINT	VP_TIM1_VS_ClockSourceINT
+TIM1	PWM Generation CH1 CH1N	TIM1_CH1	PA8
+TIM1	PWM Generation CH1 CH1N	TIM1_CH1N	PB13
+TIM1	PWM Generation CH2 CH2N	TIM1_CH2	PA9
+TIM1	PWM Generation CH2 CH2N	TIM1_CH2N	PB14
+TIM1	PWM Generation CH3 CH3N	TIM1_CH3	PA10
+TIM1	PWM Generation CH3 CH3N	TIM1_CH3N	PB15
+TIM1	Activate-Break-Input	TIM1_BKIN	PB12
+TIM2	Internal Clock	TIM2_VS_ClockSourceINT	VP_TIM2_VS_ClockSourceINT
+USART1	Asynchronous	USART1_RX	PA15
+USART1	Asynchronous	USART1_TX	PA2
+
+
+
+Pin Nb	PINs	FUNCTIONs	LABELs
+5	PF0-OSC_IN	GPIO_Output	LED_STATUS
+6	PF1-OSC_OUT	GPIO_Output	MAG_NCS
+10	PA0	ADC_IN0	OP_V_O
+11	PA1	GPIO_Output	USART_DE
+12	PA2	USART1_TX	
+13	PA3	GPIO_Analog ADC_IN3	OP_W_O
+14	PA4	ADC_IN4	
+15	PA5	SPI1_SCK	
+16	PA6	SPI1_MISO	
+17	PA7	SPI1_MOSI	
+19	PB1	GPIO_Analog ADC_IN9	OP_U_O
+25	PB12	TIM1_BKIN	OC_COMP_INT
+26	PB13	TIM1_CH1N	LSU
+27	PB14	TIM1_CH2N	LSV
+28	PB15	TIM1_CH3N	
+29	PA8	TIM1_CH1	HSU
+30	PA9	TIM1_CH2	HSV
+31	PA10	TIM1_CH3	
+32	PA11	GPIO_Input	OC_SEL
+33	PA12	TIM1_ETR	OC_COMP_INT2
+34	PA13	SYS_SWDIO	
+35	PF6	GPIO_Output	OC_TH_STBY2
+36	PF7	GPIO_Output	OC_TH_STBY1
+37	PA14	SYS_SWCLK	
+38	PA15	USART1_RX	
+42	PB6	I2C1_SCL	
+43	PB7	I2C1_SDA	
+PERIPHERALS	MODES	FUNCTIONS	PINS
+ADC	IN0	ADC_IN0	PA0
+ADC	IN3	ADC_IN3	PA3
+ADC	IN4	ADC_IN4	PA4
+ADC	IN9	ADC_IN9	PB1
+ADC	Single-ended	ADC_TempSens_Input	VP_ADC_TempSens_Input
+ADC	Vrefint Channel	ADC_Vref_Input	VP_ADC_Vref_Input
+I2C1	I2C	I2C1_SCL	PB6
+I2C1	I2C	I2C1_SDA	PB7
+SPI1	Full-Duplex Master	SPI1_MISO	PA6
+SPI1	Full-Duplex Master	SPI1_MOSI	PA7
+SPI1	Full-Duplex Master	SPI1_SCK	PA5
+SYS	Serial_Wire	SYS_SWCLK	PA14
+SYS	Serial_Wire	SYS_SWDIO	PA13
+SYS	SysTick	SYS_VS_Systick	VP_SYS_VS_Systick
+TIM1	Gated Mode	TIM1_VS_ControllerModeGated	VP_TIM1_VS_ControllerModeGated
+TIM1	ETR1	TIM1_ETR	PA12
+TIM1	Internal Clock	TIM1_VS_ClockSourceINT	VP_TIM1_VS_ClockSourceINT
+TIM1	PWM Generation CH1 CH1N	TIM1_CH1	PA8
+TIM1	PWM Generation CH1 CH1N	TIM1_CH1N	PB13
+TIM1	PWM Generation CH2 CH2N	TIM1_CH2	PA9
+TIM1	PWM Generation CH2 CH2N	TIM1_CH2N	PB14
+TIM1	PWM Generation CH3 CH3N	TIM1_CH3	PA10
+TIM1	PWM Generation CH3 CH3N	TIM1_CH3N	PB15
+TIM1	Activate-Break-Input	TIM1_BKIN	PB12
+TIM2	Internal Clock	TIM2_VS_ClockSourceINT	VP_TIM2_VS_ClockSourceINT
+USART1	Asynchronous	USART1_RX	PA15
+USART1	Asynchronous	USART1_TX	PA2
+
+
+
+Pin Nb	PINs	FUNCTIONs	LABELs
+5	PF0-OSC_IN	GPIO_Output	LED_STATUS
+6	PF1-OSC_OUT	GPIO_Output	MAG_NCS
+10	PA0	ADC_IN0	OP_V_O
+11	PA1	GPIO_Output	USART_DE
+12	PA2	USART1_TX	
+13	PA3	GPIO_Analog ADC_IN3	OP_W_O
+14	PA4	ADC_IN4	
+15	PA5	SPI1_SCK	
+16	PA6	SPI1_MISO	
+17	PA7	SPI1_MOSI	
+19	PB1	GPIO_Analog ADC_IN9	OP_U_O
+25	PB12	TIM1_BKIN	OC_COMP_INT
+26	PB13	TIM1_CH1N	LSU
+27	PB14	TIM1_CH2N	LSV
+28	PB15	TIM1_CH3N	
+29	PA8	TIM1_CH1	HSU
+30	PA9	TIM1_CH2	HSV
+31	PA10	TIM1_CH3	
+32	PA11	GPIO_Input	OC_SEL
+33	PA12	TIM1_ETR	OC_COMP_INT2
+34	PA13	SYS_SWDIO	
+35	PF6	GPIO_Output	OC_TH_STBY2
+36	PF7	GPIO_Output	OC_TH_STBY1
+37	PA14	SYS_SWCLK	
+38	PA15	USART1_RX	
+42	PB6	I2C1_SCL	
+43	PB7	I2C1_SDA	
+
+
+
+SOFTWARE PROJECT
+
+Project Settings : 
+Project Name : O32controller_FW
+Project Folder : /Users/chris/Code/STM32CubeIDE/O32controller_FW
+Toolchain / IDE : STM32CubeIDE
+Firmware Package Name and Version : STM32Cube FW_F0 V1.11.4
+
+
+Code Generation Settings : 
+STM32Cube MCU packages and embedded software packs : Copy only the necessary library files
+Generate peripheral initialization as a pair of '.c/.h' files per peripheral : No
+Backup previously generated files when re-generating : No
+Delete previously generated files when not re-generated : Yes
+Set all free pins as analog (to optimize the power consumption) : No
+
+
+Toolchains Settings : 
+Compiler Optimizations : 
+
+
+
+
+

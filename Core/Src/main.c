@@ -25,15 +25,13 @@
 #define GREEN 0 //status LED
 #define RED 1
 
+#define PPAIRS 7 //pole pairs
+
 
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
-__IO uint32_t     Transfer_Direction = 0;
-__IO uint32_t     Xfer_Complete = 0;
-
 
 /* USER CODE END PTD */
 
@@ -51,15 +49,6 @@ __IO uint32_t     Xfer_Complete = 0;
   ((byte) & 0x02 ? '1' : '0'), \
   ((byte) & 0x01 ? '1' : '0')
 
-uint8_t i2c_TX[I2CSIZE];
-uint8_t i2c_RX[I2CSIZE];
-
-/* Buffer for raw ADC readings */
-uint16_t adc_vals[NBR_ADC];
-
-uint8_t spi_TX[2];
-uint8_t spi_RX[2];
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -76,10 +65,23 @@ I2C_HandleTypeDef hi2c1;
 SPI_HandleTypeDef hspi1;
 
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim2;
 
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
+
+uint8_t i2c_TX[I2CSIZE];
+uint8_t i2c_RX[I2CSIZE];
+
+/* Buffer for raw ADC readings */
+uint16_t adc_vals[NBR_ADC];
+
+uint8_t spi_TX[2];
+uint8_t spi_RX[2];
+
+uint8_t do_print = 0;
+uint8_t i2c_complete = 0;
 
 /* USER CODE END PV */
 
@@ -92,6 +94,7 @@ static void MX_ADC_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
 
 #ifdef __GNUC__
@@ -130,11 +133,6 @@ int main(void)
 
   /* USER CODE BEGIN Init */
 
-	i2c_RX[0]=0x00;
-	i2c_RX[1]=0x00;
-
-	i2c_TX[0]=0xAA;
-	i2c_TX[1]=0xBB;
 
   /* USER CODE END Init */
 
@@ -153,16 +151,17 @@ int main(void)
   MX_SPI1_Init();
   MX_TIM1_Init();
   MX_USART1_UART_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
 
-  //disable RS485 tranceiver driver
-  HAL_GPIO_WritePin(USART_DE_GPIO_Port, USART_DE_Pin, 0);
+	//disable RS485 tranceiver driver
+	HAL_GPIO_WritePin(USART_DE_GPIO_Port, USART_DE_Pin, 0);
 
 
-  HAL_ADCEx_Calibration_Start(&hadc);
+	HAL_ADCEx_Calibration_Start(&hadc);
 
-  //don't run when not connected to actual power i think
+	//don't run when not connected to actual power i think
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1); // turn on complementary channel
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
@@ -170,6 +169,7 @@ int main(void)
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
 	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3); // turn on complementary channel
 
+	HAL_TIM_Base_Start_IT(&htim2); //100Hz timer for printing
 
 	TIM1->CCR1 = 0;
 	TIM1->CCR2 = 0;
@@ -182,17 +182,33 @@ int main(void)
 	HAL_Delay(100);
 
 
-	  HAL_StatusTypeDef status;
-	  status = HAL_I2C_EnableListen_IT(&hi2c1);
-	  if(status != HAL_OK){
-		  /* Transfer error in reception process */
-		  Error_Handler();
-	  }
+	HAL_StatusTypeDef status;
+	status = HAL_I2C_EnableListen_IT(&hi2c1);
+	if(status != HAL_OK){
+		/* Transfer error in reception process */
+		Error_Handler();
+	}
 
-  //get out of standby mode to allow gate drive
+	//get out of standby mode to allow gate drive
 	HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_SET);
-
+	//move to step 0
+	TIM1->CCR1 = 20;
+	TIM1->CCR2 = 0;
+	TIM1->CCR3 = 0;
+	HAL_Delay(1000);
+	for(int i=0; i<10; i++){ //take some angle measurements to let the sensor settle
+		HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 0);
+		HAL_SPI_TransmitReceive(&hspi1, spi_TX, spi_RX, 2, HAL_MAX_DELAY);
+		HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 1);
+	}
+	// 780.19 angle counts per 1/6th of an electrical cycle
+	// 4681.14 angle counts per electrical cycle
+	// 90º out of phase would be 1/4th of an electrical cycle, so 1170.285 angle counts
+	uint32_t m_angle = (uint32_t)((spi_RX[0] << 8) + spi_RX[1] + 16384); // 0 to 32,767
+	m_angle = m_angle * 360 / 32768; //0 - 36000 (hundreths of degrees)
+	uint32_t e_offset = (m_angle * PPAIRS) % 360;
+	int32_t e_angle = 0;
 
 
   /* USER CODE END 2 */
@@ -204,30 +220,55 @@ int main(void)
 	int mag = 20;
 
 
-
-
-
 	while (1){
 
 		//restart I2C listener after a transfer
-		if (Xfer_Complete ==1){
-			/* Put I2C peripheral in listen mode process */
-			status = HAL_I2C_EnableListen_IT(&hi2c1);
-			Xfer_Complete =0;
-			HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GREEN);
-		}
-
+//		if (Xfer_Complete ==1){
+//			/* Put I2C peripheral in listen mode process */
+//			status = HAL_I2C_EnableListen_IT(&hi2c1);
+//			Xfer_Complete =0;
+//		}
 //		printf("i2c: %X \r\n", i2c_RX[0]);
 
+		//read MA702 magnetic angle
 		HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 0);
-		status = HAL_SPI_TransmitReceive(&hspi1, spi_TX, spi_RX, 2, HAL_MAX_DELAY);
+		HAL_SPI_TransmitReceive(&hspi1, spi_TX, spi_RX, 2, HAL_MAX_DELAY);
 		HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 1);
+		m_angle = (uint32_t)((spi_RX[0] << 8) + spi_RX[1] + 16384); // 0 to 32,767
+		m_angle = m_angle * 360 / 32768; //0 - 36000 (hundreths of degrees)
+		e_angle = ((m_angle * PPAIRS) - e_offset) % 360;
 
-		if(status == HAL_OK){
-			int16_t angle = (spi_RX[0] << 8) + spi_RX[1];
-			printf("angle: %d \n", angle);
-		}else{
-//			printf("HAL SPI error \n");
+
+		int cmd = i2c_RX[0];
+		if(cmd == 0){
+			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_RESET);
+		}else if (cmd >= 1 && cmd <= 8){
+			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_SET);
+//			step = cmd - 1;
+			mag = cmd * 10;
+		}else if(cmd == 9){
+			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_SET);
+			step = ((e_angle+120)%360)/60;
+		}
+
+
+		if(do_print){
+			printf("m_angle: %ld \r\n", m_angle);
+//			printf("e_offset: %ld \r\n", e_offset);
+//			printf("e_angle: %ld \r\n", e_angle);
+//			printf("step: %d \r\n", step);
+//			printf("\r\n");
+
+			do_print = 0;
+
+			//restart I2C listener after a transfer
+			if (i2c_complete == 1){
+				status = HAL_I2C_EnableListen_IT(&hi2c1);
+				i2c_complete = 0;
+			}
 		}
 
 
@@ -261,27 +302,29 @@ int main(void)
 			TIM1->CCR2 = 0;
 			TIM1->CCR3 = mag;
 		}
-		step = (step + 1) % 6;
+//		step = (step + 1) % 6;
 
-//		HAL_Delay(3);
 
-		int cmd = i2c_RX[0];
-		if(cmd == 0){
-			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_RESET);
-		}else{
-			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_SET);
-			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_SET);
-			cmd *= 2;
-		}
-		HAL_Delay(cmd);
+//		int cmd = i2c_RX[0];
+//		if(cmd == 0){
+//			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_RESET);
+//			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_RESET);
+//		}else{
+//			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_SET);
+//			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_SET);
+//			cmd *= 2;
+//		}
+//		HAL_Delay(cmd);
+//		HAL_Delay(10);
 
 
 
 		//read all ADCs
 		HAL_ADC_Start_DMA(&hadc, (uint32_t *)adc_vals, NBR_ADC);  // start the adc in dma mode
+		int16_t temp = (1000*(1908 - adc_vals[4])) / 5337;
+		printf("temp: %d \r\n", temp);
 
-//		printf("ADC: \n");
+//		printf("ADC: \r\n");
 //		for(int i = 0; i < NBR_ADC; i++){
 //			if(i == 2){ //Vbus sensor
 //				printf(" %d", 330*adc_vals[i] * 512 / 4095);
@@ -289,7 +332,7 @@ int main(void)
 //				printf(" %d", adc_vals[i]);
 //			}
 //		}
-//		printf("\n");
+//		printf("\r\n");
 
 
 
@@ -625,6 +668,51 @@ static void MX_TIM1_Init(void)
 }
 
 /**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 47;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 10;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -724,6 +812,14 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 
+//Callback whenever a timer rolls over
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
+	if(htim == &htim2){ //100Hz
+		do_print = 1;
+	}
+}
+
+
 /**
   * @brief  Tx Transfer completed callback.
   * @param  I2cHandle: I2C handle.
@@ -733,7 +829,7 @@ static void MX_GPIO_Init(void)
   */
 
 void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *I2cHandle){
-  Xfer_Complete = 1;
+  i2c_complete = 1;
 }
 
 
@@ -757,26 +853,21 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *I2cHandle){
   * @retval None
   */
 void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode){
-
 	HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, RED);
+	HAL_StatusTypeDef status;
 
-  Transfer_Direction = TransferDirection;
-  HAL_StatusTypeDef status;
-  if (Transfer_Direction != 0){
-	  status = HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, (uint8_t *)i2c_TX, I2CSIZE, I2C_FIRST_AND_LAST_FRAME);
+	if (TransferDirection != 0){
+		status = HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, (uint8_t *)i2c_TX, I2CSIZE, I2C_FIRST_AND_LAST_FRAME);
+	}else{
+		status = HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, (uint8_t *)i2c_RX, I2CSIZE, I2C_FIRST_AND_LAST_FRAME);
+		i2c_TX[0] = i2c_RX[0] + 1;
+		i2c_TX[1] = i2c_RX[1] + 1;
+	}
+	if(status != HAL_OK){
+		Error_Handler();
+	}
 
-
-  }else{
-	  status = HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, (uint8_t *)i2c_RX, I2CSIZE, I2C_FIRST_AND_LAST_FRAME);
-
-	  i2c_TX[0] = i2c_RX[0] + 1;
-	  i2c_TX[1] = i2c_RX[1] + 1;
-
-  }
-  if(status != HAL_OK){
-	  Error_Handler();
-  }
-
+	HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GREEN);
 }
 
 /**
@@ -816,6 +907,7 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
+	HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, RED);
 	printf("ERROR HANDLER \n");
   __disable_irq();		//disable interrupts
 	NVIC_SystemReset(); //reset microcontroller, clearing any I2C faults. Maybe change to only
