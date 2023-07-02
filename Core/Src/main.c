@@ -206,8 +206,8 @@ int main(void)
 	// 4681.14 angle counts per electrical cycle
 	// 90º out of phase would be 1/4th of an electrical cycle, so 1170.285 angle counts
 	uint32_t m_angle = (uint32_t)((spi_RX[0] << 8) + spi_RX[1] + 16384); // 0 to 32,767
-	m_angle = m_angle * 360 / 32768; //0 - 36000 (hundreths of degrees)
-	uint32_t e_offset = (m_angle * PPAIRS) % 360;
+	m_angle = m_angle * 36000 / 32768; //0 - 36000 (hundreths of degrees)
+	uint32_t e_offset = (m_angle/100 * PPAIRS) % 360;
 	int32_t e_angle = 0;
 
 
@@ -219,6 +219,11 @@ int main(void)
 	int step = 0;
 	int mag = 20;
 
+	uint32_t m_angle_prev = m_angle;
+	int32_t revs = 0;
+	int32_t cont_angle = 0;
+	int32_t cont_angle_prev = 0;
+	int32_t rpm = 0;
 
 	while (1){
 
@@ -235,8 +240,21 @@ int main(void)
 		HAL_SPI_TransmitReceive(&hspi1, spi_TX, spi_RX, 2, HAL_MAX_DELAY);
 		HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 1);
 		m_angle = (uint32_t)((spi_RX[0] << 8) + spi_RX[1] + 16384); // 0 to 32,767
-		m_angle = m_angle * 360 / 32768; //0 - 36000 (hundreths of degrees)
-		e_angle = ((m_angle * PPAIRS) - e_offset) % 360;
+		m_angle = (m_angle * 36000 / 32768); //0 - 36000 (hundreths of degrees)
+		e_angle = ((m_angle/100 * PPAIRS) - e_offset) % 360;
+
+		m_angle %= 36000;
+
+		if(m_angle_prev < 9000 && m_angle > 27000){
+			revs -= 36000;
+		}else if(m_angle < 9000 && m_angle_prev > 27000){
+			revs += 36000;
+		}
+		cont_angle = (99*cont_angle + 1*(m_angle + revs))/100;
+
+
+
+
 
 
 		int cmd = i2c_RX[0];
@@ -248,6 +266,14 @@ int main(void)
 			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_SET);
 //			step = cmd - 1;
 			mag = cmd * 10;
+//			step = ((e_angle+300)%360)/60;
+			if(cont_angle > 36500){
+				step = ((e_angle+300)%360)/60;
+//			}else if (cont_angle < 35500){
+//				step = ((e_angle+120)%360)/60;
+			}else{
+				mag = 0;
+			}
 		}else if(cmd == 9){
 			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_SET);
 			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_SET);
@@ -255,12 +281,22 @@ int main(void)
 		}
 
 
+
+
 		if(do_print){
-			printf("m_angle: %ld \r\n", m_angle);
-//			printf("e_offset: %ld \r\n", e_offset);
-//			printf("e_angle: %ld \r\n", e_angle);
-//			printf("step: %d \r\n", step);
-//			printf("\r\n");
+
+			rpm = (cont_angle - cont_angle_prev)/60;
+			cont_angle_prev = cont_angle;
+
+
+			HAL_GPIO_TogglePin(GPIOF, LED_STATUS_Pin);
+
+
+//			printf("m_angle: %ld \n", m_angle);
+//			printf("cont_angle: %ld \n", cont_angle);
+//			printf("rpm: %ld \n", rpm);
+//			printf("\t");
+
 
 			do_print = 0;
 
@@ -270,6 +306,8 @@ int main(void)
 				i2c_complete = 0;
 			}
 		}
+
+		m_angle_prev = m_angle;
 
 
 		if(step==0){
@@ -302,27 +340,11 @@ int main(void)
 			TIM1->CCR2 = 0;
 			TIM1->CCR3 = mag;
 		}
-//		step = (step + 1) % 6;
-
-
-//		int cmd = i2c_RX[0];
-//		if(cmd == 0){
-//			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_RESET);
-//			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_RESET);
-//		}else{
-//			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_SET);
-//			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_SET);
-//			cmd *= 2;
-//		}
-//		HAL_Delay(cmd);
-//		HAL_Delay(10);
-
-
 
 		//read all ADCs
 		HAL_ADC_Start_DMA(&hadc, (uint32_t *)adc_vals, NBR_ADC);  // start the adc in dma mode
 		int16_t temp = (1000*(1908 - adc_vals[4])) / 5337;
-		printf("temp: %d \r\n", temp);
+//		printf("temp: %d \n", temp);
 
 //		printf("ADC: \r\n");
 //		for(int i = 0; i < NBR_ADC; i++){
@@ -333,8 +355,6 @@ int main(void)
 //			}
 //		}
 //		printf("\r\n");
-
-
 
 
     /* USER CODE END WHILE */
@@ -688,7 +708,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 47;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 10;
+  htim2.Init.Period = 100000;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
