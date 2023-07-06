@@ -265,15 +265,21 @@ int main(void)
 			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_SET);
 			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_SET);
 //			step = cmd - 1;
-			mag = cmd * 10;
-//			step = ((e_angle+300)%360)/60;
+
 			if(cont_angle > 36500){
 				step = ((e_angle+300)%360)/60;
-//			}else if (cont_angle < 35500){
-//				step = ((e_angle+120)%360)/60;
+				mag = (cont_angle - 36500)/100;
+			}else if (cont_angle < 35500){
+				step = ((e_angle+120)%360)/60;
+				mag = (35500 - cont_angle)/100;
 			}else{
 				mag = 0;
 			}
+
+			if(mag > cmd * 10){
+				mag = cmd * 10;
+			}
+
 		}else if(cmd == 9){
 			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_SET);
 			HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_SET);
