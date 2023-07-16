@@ -68,6 +68,7 @@ TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 
 UART_HandleTypeDef huart1;
+DMA_HandleTypeDef hdma_usart1_tx;
 
 /* USER CODE BEGIN PV */
 
@@ -298,10 +299,11 @@ int main(void)
 			HAL_GPIO_TogglePin(GPIOF, LED_STATUS_Pin);
 
 
-//			printf("m_angle: %ld \n", m_angle);
+			printf("m_angle: %ld \n", m_angle);
 //			printf("cont_angle: %ld \n", cont_angle);
-//			printf("rpm: %ld \n", rpm);
-//			printf("\t");
+			printf("i2c_RX: %d \n", i2c_RX[0]);
+			printf("rpm: %ld \n", rpm);
+			printf("\t");
 
 
 			do_print = 0;
@@ -714,7 +716,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 47;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 100000;
+  htim2.Init.Period = 10000;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -786,6 +788,9 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel1_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+  /* DMA1_Channel2_3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel2_3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel2_3_IRQn);
 
 }
 
@@ -896,15 +901,7 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, ui
 	HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, GREEN);
 }
 
-/**
-  * @brief  Listen Complete callback.
-  * @param  hi2c Pointer to a I2C_HandleTypeDef structure that contains
-  *                the configuration information for the specified I2C.
-  * @retval None
-  */
-void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c)
-{
-}
+
 
 /**
   * @brief  I2C error callbacks.
