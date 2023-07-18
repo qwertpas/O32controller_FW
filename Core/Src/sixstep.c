@@ -10,6 +10,7 @@
 
 
 
+
 void sixstep_startup() {
 	//disable RS485 tranceiver driver
 	HAL_GPIO_WritePin(USART_DE_GPIO_Port, USART_DE_Pin, 0);
