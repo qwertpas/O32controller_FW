@@ -7,9 +7,18 @@
 
 #include "sixstep.h"
 
+uint8_t step;
+uint16_t mag;
 
+uint32_t m_angle;
+uint32_t m_angle_prev;
+int32_t revs;
+int32_t cont_angle;
+int32_t cont_angle_prev;
+int32_t rpm;
 
-
+uint16_t e_offset;
+uint16_t e_angle;
 
 void sixstep_startup() {
 	//disable RS485 tranceiver driver
@@ -40,12 +49,7 @@ void sixstep_startup() {
 	LED_green;
 	HAL_Delay(100);
 
-	HAL_StatusTypeDef status;
-	status = HAL_I2C_EnableListen_IT(&hi2c1);
-	if (status != HAL_OK) {
-		/* Transfer error in reception process */
-		Error_Handler();
-	}
+	HAL_I2C_EnableListen_IT(&hi2c1);
 
 	//get out of standby mode to allow gate drive
 	HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_SET);
@@ -57,13 +61,13 @@ void sixstep_startup() {
 	HAL_Delay(1000);
 	for (int i = 0; i < 10; i++) { //take some angle measurements to let the sensor settle
 		HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 0);
-		HAL_SPI_TransmitReceive(&hspi1, spi_TX, spi_RX, 2, HAL_MAX_DELAY);
+		HAL_SPI_TransmitReceive(&hspi1, p.spi_TX, p.spi_RX, 2, HAL_MAX_DELAY);
 		HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 1);
 	}
 	// 780.19 angle counts per 1/6th of an electrical cycle
 	// 4681.14 angle counts per electrical cycle
 	// 90º out of phase would be 1/4th of an electrical cycle, so 1170.285 angle counts
-	m_angle = (uint32_t) ((spi_RX[0] << 8) + spi_RX[1] + 16384); // 0 to 32,767
+	m_angle = (uint32_t) ((p.spi_RX[0] << 8) + p.spi_RX[1] + 16384); // 0 to 32,767
 	m_angle = m_angle * 36000 / 32768; //0 - 36000 (hundreths of degrees)
 	e_offset = (m_angle / 100 * PPAIRS) % 360;
 	e_angle = 0;
@@ -81,9 +85,9 @@ void sixstep_startup() {
 void sixstep_loop() {
 	//read MA702 magnetic angle
 	HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 0);
-	HAL_SPI_TransmitReceive(&hspi1, spi_TX, spi_RX, 2, HAL_MAX_DELAY);
+	HAL_SPI_TransmitReceive(&hspi1, p.spi_TX, p.spi_RX, 2, HAL_MAX_DELAY);
 	HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 1);
-	m_angle = (uint32_t) ((spi_RX[0] << 8) + spi_RX[1] + 16384); // 0 to 32,767
+	m_angle = (uint32_t) ((p.spi_RX[0] << 8) + p.spi_RX[1] + 16384); // 0 to 32,767
 	m_angle = (m_angle * 36000 / 32768); //0 - 36000 (hundreths of degrees)
 	e_angle = ((m_angle / 100 * PPAIRS) - e_offset) % 360;
 
@@ -96,7 +100,7 @@ void sixstep_loop() {
 	}
 	cont_angle = (99 * cont_angle + 1 * (m_angle + revs)) / 100;
 
-	int cmd = i2c_RX[0];
+	int cmd = p.i2c_RX[0];
 	if (cmd == 0) {
 		HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_RESET);
@@ -159,7 +163,7 @@ void sixstep_loop() {
 	}
 
 	//read all ADCs
-	HAL_ADC_Start_DMA(&hadc, (uint32_t*) adc_vals, NBR_ADC);  // start the adc in dma mode
+	HAL_ADC_Start_DMA(&hadc, (uint32_t*) p.adc_vals, NBR_ADC);  // start the adc in dma mode
 //	int16_t temp = (1000 * (1908 - adc_vals[4])) / 5337;
 
 	//		adc_to_volt = 3.0 * VREFINT_CAL / (adc_vals[0] * 4095.);
@@ -177,33 +181,21 @@ void sixstep_loop() {
 	//		}
 	//		printf("\r\n");
 
-	if (do_print) {
-		//			LED_red;
+	if (p.print_flag) {
 
 		rpm = (cont_angle - cont_angle_prev) / 60;
 		cont_angle_prev = cont_angle;
 
-		//			HAL_GPIO_TogglePin(GPIOF, LED_STATUS_Pin);
+		sprintf((char*) p.uart_TX, " adc0: %d \n adc1: %d \n adc3: %d \n\t", p.adc_vals[0], p.adc_vals[1], p.adc_vals[3]);
+		HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 100);
 
-		//			HAL_UART_Transmit_DMA(&huart1, uart_TX, 100);
-
-		sprintf((char*) uart_TX, " adc0: %d \n adc1: %d \n adc3: %d \n\t", adc_vals[0], adc_vals[1], adc_vals[3]);
-		//			addprint("cont_angle: %ld \n", cont_angle);
-		//			addprint("i2c_RX: %d \n", i2c_RX[0]);
-		//			addprint("adc1: %d \n", adc_vals[1]);
-		//			addprint("rpm: %ld \n", rpm);
-		//			addprint("\t");
-		HAL_UART_Transmit_DMA(&huart1, uart_TX, 100);
-
-		//			HAL_UART_Transmit(&huart1, uart_TX, 100, HAL_MAX_DELAY);
-
-		do_print = 0;
+		p.print_flag = 0;
 
 		//restart I2C listener after a transfer
-		if (i2c_complete == 1) {
+		if (p.i2c_complete_flag == 1) {
 			HAL_I2C_EnableListen_IT(&hi2c1);
-			i2c_complete = 0;
+			p.i2c_complete_flag = 0;
 		}
-		//			LED_green;
 	}
 }
+

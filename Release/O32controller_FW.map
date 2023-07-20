@@ -104,19 +104,9 @@ Discarded input sections
  .text          0x0000000000000000        0x0 ./Core/Src/main.o
  .data          0x0000000000000000        0x0 ./Core/Src/main.o
  .bss           0x0000000000000000        0x0 ./Core/Src/main.o
- .bss.adc_vals  0x0000000000000000        0xc ./Core/Src/main.o
- .bss.spi_RX    0x0000000000000000        0x2 ./Core/Src/main.o
- .bss.spi_TX    0x0000000000000000        0x2 ./Core/Src/main.o
- .bss.uart_RX   0x0000000000000000       0x64 ./Core/Src/main.o
- .bss.uart_TX   0x0000000000000000       0x64 ./Core/Src/main.o
- .bss.uart_TX_pos
-                0x0000000000000000        0x2 ./Core/Src/main.o
  .text          0x0000000000000000        0x0 ./Core/Src/sixstep.o
  .data          0x0000000000000000        0x0 ./Core/Src/sixstep.o
  .bss           0x0000000000000000        0x0 ./Core/Src/sixstep.o
- .bss.uart_RX   0x0000000000000000       0x64 ./Core/Src/sixstep.o
- .bss.uart_TX_pos
-                0x0000000000000000        0x2 ./Core/Src/sixstep.o
  .text          0x0000000000000000        0x0 ./Core/Src/stm32f0xx_hal_msp.o
  .data          0x0000000000000000        0x0 ./Core/Src/stm32f0xx_hal_msp.o
  .bss           0x0000000000000000        0x0 ./Core/Src/stm32f0xx_hal_msp.o
@@ -1328,34 +1318,34 @@ LOAD /Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.id
                 0x000000000800044c       0x18 ./Core/Src/main.o
                 0x000000000800044c                HAL_TIM_PeriodElapsedCallback
  .text.HAL_I2C_SlaveTxCpltCallback
-                0x0000000008000464        0xc ./Core/Src/main.o
+                0x0000000008000464       0x10 ./Core/Src/main.o
                 0x0000000008000464                HAL_I2C_SlaveTxCpltCallback
  .text.HAL_I2C_SlaveRxCpltCallback
-                0x0000000008000470        0x2 ./Core/Src/main.o
-                0x0000000008000470                HAL_I2C_SlaveRxCpltCallback
- *fill*         0x0000000008000472        0x2 
+                0x0000000008000474        0x2 ./Core/Src/main.o
+                0x0000000008000474                HAL_I2C_SlaveRxCpltCallback
+ *fill*         0x0000000008000476        0x2 
  .text.Error_Handler
-                0x0000000008000474       0x38 ./Core/Src/main.o
-                0x0000000008000474                Error_Handler
+                0x0000000008000478       0x38 ./Core/Src/main.o
+                0x0000000008000478                Error_Handler
  .text.SystemClock_Config
-                0x00000000080004ac       0x76 ./Core/Src/main.o
-                0x00000000080004ac                SystemClock_Config
- *fill*         0x0000000008000522        0x2 
+                0x00000000080004b0       0x76 ./Core/Src/main.o
+                0x00000000080004b0                SystemClock_Config
+ *fill*         0x0000000008000526        0x2 
  .text.startup.main
-                0x0000000008000524      0x3c0 ./Core/Src/main.o
-                0x0000000008000524                main
+                0x0000000008000528      0x3c0 ./Core/Src/main.o
+                0x0000000008000528                main
  .text.HAL_I2C_AddrCallback
-                0x00000000080008e4       0x48 ./Core/Src/main.o
-                0x00000000080008e4                HAL_I2C_AddrCallback
+                0x00000000080008e8       0x40 ./Core/Src/main.o
+                0x00000000080008e8                HAL_I2C_AddrCallback
  .text.HAL_I2C_ErrorCallback
-                0x000000000800092c       0x10 ./Core/Src/main.o
-                0x000000000800092c                HAL_I2C_ErrorCallback
+                0x0000000008000928       0x10 ./Core/Src/main.o
+                0x0000000008000928                HAL_I2C_ErrorCallback
  .text.sixstep_startup
-                0x000000000800093c      0x184 ./Core/Src/sixstep.o
-                0x000000000800093c                sixstep_startup
+                0x0000000008000938      0x180 ./Core/Src/sixstep.o
+                0x0000000008000938                sixstep_startup
  .text.sixstep_loop
-                0x0000000008000ac0      0x2e8 ./Core/Src/sixstep.o
-                0x0000000008000ac0                sixstep_loop
+                0x0000000008000ab8      0x2f0 ./Core/Src/sixstep.o
+                0x0000000008000ab8                sixstep_loop
  .text.HAL_MspInit
                 0x0000000008000da8       0x30 ./Core/Src/stm32f0xx_hal_msp.o
                 0x0000000008000da8                HAL_MspInit
@@ -2045,92 +2035,93 @@ LOAD /Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.id
  .igot.plt      0x0000000020000070        0x0 /Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.10.3-2021.10.macos64_1.0.200.202301161003/tools/bin/../lib/gcc/arm-none-eabi/10.3.1/thumb/v6-m/nofp/crtbegin.o
                 0x0000000020000070                . = ALIGN (0x4)
 
-.bss            0x0000000020000070       0xe0 load address 0x0000000008005ce8
+.bss            0x0000000020000070      0x3d0 load address 0x0000000008005ce8
                 0x0000000020000070                _sbss = .
                 0x0000000020000070                __bss_start__ = _sbss
  *(.bss)
  .bss           0x0000000020000070       0x1c /Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.10.3-2021.10.macos64_1.0.200.202301161003/tools/bin/../lib/gcc/arm-none-eabi/10.3.1/thumb/v6-m/nofp/crtbegin.o
  *(.bss*)
- .bss.do_print  0x000000002000008c        0x1 ./Core/Src/main.o
-                0x000000002000008c                do_print
- .bss.i2c_RX    0x000000002000008d        0x2 ./Core/Src/main.o
-                0x000000002000008d                i2c_RX
- .bss.i2c_TX    0x000000002000008f        0x2 ./Core/Src/main.o
-                0x000000002000008f                i2c_TX
- .bss.i2c_complete
-                0x0000000020000091        0x1 ./Core/Src/main.o
-                0x0000000020000091                i2c_complete
- .bss.adc_vals  0x0000000020000092        0xc ./Core/Src/sixstep.o
- *fill*         0x000000002000009e        0x2 
+ .bss.hadc      0x000000002000008c       0x40 ./Core/Src/main.o
+                0x000000002000008c                hadc
+ .bss.hdma_adc  0x00000000200000cc       0x44 ./Core/Src/main.o
+                0x00000000200000cc                hdma_adc
+ .bss.hdma_usart1_tx
+                0x0000000020000110       0x44 ./Core/Src/main.o
+                0x0000000020000110                hdma_usart1_tx
+ .bss.hi2c1     0x0000000020000154       0x54 ./Core/Src/main.o
+                0x0000000020000154                hi2c1
+ .bss.hspi1     0x00000000200001a8       0x64 ./Core/Src/main.o
+                0x00000000200001a8                hspi1
+ .bss.htim1     0x000000002000020c       0x48 ./Core/Src/main.o
+                0x000000002000020c                htim1
+ .bss.htim2     0x0000000020000254       0x48 ./Core/Src/main.o
+                0x0000000020000254                htim2
+ .bss.huart1    0x000000002000029c       0x88 ./Core/Src/main.o
+                0x000000002000029c                huart1
+ .bss.p         0x0000000020000324       0xe0 ./Core/Src/main.o
+                0x0000000020000324                p
  .bss.cont_angle
-                0x00000000200000a0        0x4 ./Core/Src/sixstep.o
-                0x00000000200000a0                cont_angle
+                0x0000000020000404        0x4 ./Core/Src/sixstep.o
+                0x0000000020000404                cont_angle
  .bss.cont_angle_prev
-                0x00000000200000a4        0x4 ./Core/Src/sixstep.o
-                0x00000000200000a4                cont_angle_prev
- .bss.do_print  0x00000000200000a8        0x1 ./Core/Src/sixstep.o
- *fill*         0x00000000200000a9        0x3 
- .bss.e_angle   0x00000000200000ac        0x4 ./Core/Src/sixstep.o
-                0x00000000200000ac                e_angle
- .bss.e_offset  0x00000000200000b0        0x4 ./Core/Src/sixstep.o
-                0x00000000200000b0                e_offset
- .bss.i2c_RX    0x00000000200000b4        0x2 ./Core/Src/sixstep.o
- .bss.i2c_complete
-                0x00000000200000b6        0x1 ./Core/Src/sixstep.o
- *fill*         0x00000000200000b7        0x1 
- .bss.m_angle   0x00000000200000b8        0x4 ./Core/Src/sixstep.o
-                0x00000000200000b8                m_angle
+                0x0000000020000408        0x4 ./Core/Src/sixstep.o
+                0x0000000020000408                cont_angle_prev
+ .bss.e_angle   0x000000002000040c        0x2 ./Core/Src/sixstep.o
+                0x000000002000040c                e_angle
+ .bss.e_offset  0x000000002000040e        0x2 ./Core/Src/sixstep.o
+                0x000000002000040e                e_offset
+ .bss.m_angle   0x0000000020000410        0x4 ./Core/Src/sixstep.o
+                0x0000000020000410                m_angle
  .bss.m_angle_prev
-                0x00000000200000bc        0x4 ./Core/Src/sixstep.o
-                0x00000000200000bc                m_angle_prev
- .bss.mag       0x00000000200000c0        0x4 ./Core/Src/sixstep.o
-                0x00000000200000c0                mag
- .bss.revs      0x00000000200000c4        0x4 ./Core/Src/sixstep.o
-                0x00000000200000c4                revs
- .bss.rpm       0x00000000200000c8        0x4 ./Core/Src/sixstep.o
-                0x00000000200000c8                rpm
- .bss.spi_RX    0x00000000200000cc        0x2 ./Core/Src/sixstep.o
- .bss.spi_TX    0x00000000200000ce        0x2 ./Core/Src/sixstep.o
- .bss.step      0x00000000200000d0        0x4 ./Core/Src/sixstep.o
-                0x00000000200000d0                step
- .bss.uart_TX   0x00000000200000d4       0x64 ./Core/Src/sixstep.o
+                0x0000000020000414        0x4 ./Core/Src/sixstep.o
+                0x0000000020000414                m_angle_prev
+ .bss.mag       0x0000000020000418        0x2 ./Core/Src/sixstep.o
+                0x0000000020000418                mag
+ *fill*         0x000000002000041a        0x2 
+ .bss.revs      0x000000002000041c        0x4 ./Core/Src/sixstep.o
+                0x000000002000041c                revs
+ .bss.rpm       0x0000000020000420        0x4 ./Core/Src/sixstep.o
+                0x0000000020000420                rpm
+ .bss.step      0x0000000020000424        0x1 ./Core/Src/sixstep.o
+                0x0000000020000424                step
+ *fill*         0x0000000020000425        0x3 
  .bss.__sbrk_heap_end
-                0x0000000020000138        0x4 ./Core/Src/sysmem.o
- .bss.uwTick    0x000000002000013c        0x4 ./Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal.o
-                0x000000002000013c                uwTick
+                0x0000000020000428        0x4 ./Core/Src/sysmem.o
+ .bss.uwTick    0x000000002000042c        0x4 ./Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal.o
+                0x000000002000042c                uwTick
  .bss.__lock___malloc_recursive_mutex
-                0x0000000020000140        0x1 /Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.10.3-2021.10.macos64_1.0.200.202301161003/tools/bin/../lib/gcc/arm-none-eabi/10.3.1/../../../../arm-none-eabi/lib/thumb/v6-m/nofp/libc_nano.a(lib_a-lock.o)
-                0x0000000020000140                __lock___malloc_recursive_mutex
+                0x0000000020000430        0x1 /Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.10.3-2021.10.macos64_1.0.200.202301161003/tools/bin/../lib/gcc/arm-none-eabi/10.3.1/../../../../arm-none-eabi/lib/thumb/v6-m/nofp/libc_nano.a(lib_a-lock.o)
+                0x0000000020000430                __lock___malloc_recursive_mutex
  .bss.__lock___sfp_recursive_mutex
-                0x0000000020000141        0x1 /Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.10.3-2021.10.macos64_1.0.200.202301161003/tools/bin/../lib/gcc/arm-none-eabi/10.3.1/../../../../arm-none-eabi/lib/thumb/v6-m/nofp/libc_nano.a(lib_a-lock.o)
-                0x0000000020000141                __lock___sfp_recursive_mutex
+                0x0000000020000431        0x1 /Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.10.3-2021.10.macos64_1.0.200.202301161003/tools/bin/../lib/gcc/arm-none-eabi/10.3.1/../../../../arm-none-eabi/lib/thumb/v6-m/nofp/libc_nano.a(lib_a-lock.o)
+                0x0000000020000431                __lock___sfp_recursive_mutex
  .bss.__lock___sinit_recursive_mutex
-                0x0000000020000142        0x1 /Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.10.3-2021.10.macos64_1.0.200.202301161003/tools/bin/../lib/gcc/arm-none-eabi/10.3.1/../../../../arm-none-eabi/lib/thumb/v6-m/nofp/libc_nano.a(lib_a-lock.o)
-                0x0000000020000142                __lock___sinit_recursive_mutex
- *fill*         0x0000000020000143        0x1 
+                0x0000000020000432        0x1 /Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.10.3-2021.10.macos64_1.0.200.202301161003/tools/bin/../lib/gcc/arm-none-eabi/10.3.1/../../../../arm-none-eabi/lib/thumb/v6-m/nofp/libc_nano.a(lib_a-lock.o)
+                0x0000000020000432                __lock___sinit_recursive_mutex
+ *fill*         0x0000000020000433        0x1 
  .bss.__malloc_free_list
-                0x0000000020000144        0x4 /Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.10.3-2021.10.macos64_1.0.200.202301161003/tools/bin/../lib/gcc/arm-none-eabi/10.3.1/../../../../arm-none-eabi/lib/thumb/v6-m/nofp/libc_nano.a(lib_a-nano-mallocr.o)
-                0x0000000020000144                __malloc_free_list
+                0x0000000020000434        0x4 /Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.10.3-2021.10.macos64_1.0.200.202301161003/tools/bin/../lib/gcc/arm-none-eabi/10.3.1/../../../../arm-none-eabi/lib/thumb/v6-m/nofp/libc_nano.a(lib_a-nano-mallocr.o)
+                0x0000000020000434                __malloc_free_list
  .bss.__malloc_sbrk_start
-                0x0000000020000148        0x4 /Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.10.3-2021.10.macos64_1.0.200.202301161003/tools/bin/../lib/gcc/arm-none-eabi/10.3.1/../../../../arm-none-eabi/lib/thumb/v6-m/nofp/libc_nano.a(lib_a-nano-mallocr.o)
-                0x0000000020000148                __malloc_sbrk_start
- .bss.errno     0x000000002000014c        0x4 /Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.10.3-2021.10.macos64_1.0.200.202301161003/tools/bin/../lib/gcc/arm-none-eabi/10.3.1/../../../../arm-none-eabi/lib/thumb/v6-m/nofp/libc_nano.a(lib_a-reent.o)
-                0x000000002000014c                errno
+                0x0000000020000438        0x4 /Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.10.3-2021.10.macos64_1.0.200.202301161003/tools/bin/../lib/gcc/arm-none-eabi/10.3.1/../../../../arm-none-eabi/lib/thumb/v6-m/nofp/libc_nano.a(lib_a-nano-mallocr.o)
+                0x0000000020000438                __malloc_sbrk_start
+ .bss.errno     0x000000002000043c        0x4 /Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.10.3-2021.10.macos64_1.0.200.202301161003/tools/bin/../lib/gcc/arm-none-eabi/10.3.1/../../../../arm-none-eabi/lib/thumb/v6-m/nofp/libc_nano.a(lib_a-reent.o)
+                0x000000002000043c                errno
  *(COMMON)
-                0x0000000020000150                . = ALIGN (0x4)
-                0x0000000020000150                _ebss = .
-                0x0000000020000150                __bss_end__ = _ebss
+                0x0000000020000440                . = ALIGN (0x4)
+                0x0000000020000440                _ebss = .
+                0x0000000020000440                __bss_end__ = _ebss
 
 ._user_heap_stack
-                0x0000000020000150      0x600 load address 0x0000000008005ce8
-                0x0000000020000150                . = ALIGN (0x8)
+                0x0000000020000440      0x600 load address 0x0000000008005ce8
+                0x0000000020000440                . = ALIGN (0x8)
                 [!provide]                        PROVIDE (end = .)
-                0x0000000020000150                PROVIDE (_end = .)
-                0x0000000020000350                . = (. + _Min_Heap_Size)
- *fill*         0x0000000020000150      0x200 
-                0x0000000020000750                . = (. + _Min_Stack_Size)
- *fill*         0x0000000020000350      0x400 
-                0x0000000020000750                . = ALIGN (0x8)
+                0x0000000020000440                PROVIDE (_end = .)
+                0x0000000020000640                . = (. + _Min_Heap_Size)
+ *fill*         0x0000000020000440      0x200 
+                0x0000000020000a40                . = (. + _Min_Stack_Size)
+ *fill*         0x0000000020000640      0x400 
+                0x0000000020000a40                . = ALIGN (0x8)
 
 /DISCARD/
  libc.a(*)

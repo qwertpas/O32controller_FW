@@ -65,7 +65,6 @@
 #define LED_green HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, 0)
 
 
-
 extern ADC_HandleTypeDef hadc;
 extern DMA_HandleTypeDef hdma_adc;
 extern I2C_HandleTypeDef hi2c1;
@@ -75,6 +74,25 @@ extern TIM_HandleTypeDef htim2;
 extern UART_HandleTypeDef huart1;
 extern DMA_HandleTypeDef hdma_usart1_tx;
 
+
+typedef struct {
+	uint8_t i2c_TX[I2CSIZE];
+	uint8_t i2c_RX[I2CSIZE];
+
+	uint8_t uart_TX[100];
+	uint16_t uart_TX_pos;
+	uint8_t uart_RX[100];
+
+	/* Buffer for raw ADC readings */
+	uint16_t adc_vals[NBR_ADC];
+
+	uint8_t spi_TX[2];
+	uint8_t spi_RX[2];
+
+	uint8_t print_flag;
+	uint8_t i2c_complete_flag;
+} PeripherialStruct;
+extern PeripherialStruct p;
 
 
 

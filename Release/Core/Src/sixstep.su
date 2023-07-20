@@ -1,0 +1,2 @@
+../Core/Src/sixstep.c:23:6:sixstep_startup	24	static
+../Core/Src/sixstep.c:85:6:sixstep_loop	40	static

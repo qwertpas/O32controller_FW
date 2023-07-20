@@ -7,8 +7,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "global.h"
-
-//#include "sixstep.h"
+#include "sixstep.h"
 //#include "foc.h"
 
 #include <stdio.h>
@@ -17,24 +16,6 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
-typedef struct {
-	uint8_t i2c_TX[I2CSIZE];
-	uint8_t i2c_RX[I2CSIZE];
-
-	uint8_t uart_TX[100];
-	uint16_t uart_TX_pos = 0;
-	uint8_t uart_RX[100];
-
-	/* Buffer for raw ADC readings */
-	uint16_t adc_vals[NBR_ADC];
-
-	uint8_t spi_TX[2];
-	uint8_t spi_RX[2];
-
-	uint8_t do_print = 0;
-	uint8_t i2c_complete = 0;
-} CommStruct;
 
 /* USER CODE END PTD */
 
@@ -49,8 +30,22 @@ typedef struct {
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+ADC_HandleTypeDef hadc;
+DMA_HandleTypeDef hdma_adc;
+
+I2C_HandleTypeDef hi2c1;
+
+SPI_HandleTypeDef hspi1;
+
+TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim2;
+
+UART_HandleTypeDef huart1;
+DMA_HandleTypeDef hdma_usart1_tx;
 
 /* USER CODE BEGIN PV */
+
+PeripherialStruct p;
 
 /* USER CODE END PV */
 
@@ -571,7 +566,7 @@ static void MX_GPIO_Init(void) {
 //Callback whenever a timer rolls over
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	if (htim == &htim2) { //100Hz
-		do_print = 1;
+		p.print_flag = 1;
 	}
 }
 
@@ -584,7 +579,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
  */
 
 void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *I2cHandle) {
-	i2c_complete = 1;
+	p.i2c_complete_flag = 1;
 }
 
 /**
@@ -610,11 +605,11 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, ui
 	HAL_StatusTypeDef status;
 
 	if (TransferDirection != 0) {
-		status = HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, (uint8_t*) i2c_TX, I2CSIZE, I2C_FIRST_AND_LAST_FRAME);
+		status = HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, (uint8_t*) p.i2c_TX, I2CSIZE, I2C_FIRST_AND_LAST_FRAME);
 	} else {
-		status = HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, (uint8_t*) i2c_RX, I2CSIZE, I2C_FIRST_AND_LAST_FRAME);
-		i2c_TX[0] = i2c_RX[0] + 1;
-		i2c_TX[1] = i2c_RX[1] + 1;
+		status = HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, (uint8_t*) p.i2c_RX, I2CSIZE, I2C_FIRST_AND_LAST_FRAME);
+		p.i2c_TX[0] = p.i2c_RX[0] + 1;
+		p.i2c_TX[1] = p.i2c_RX[1] + 1;
 	}
 	if (status != HAL_OK) {
 		Error_Handler();
