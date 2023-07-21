@@ -1,5 +1,5 @@
-stm32f0xx_hal_gpio.c:169:6:HAL_GPIO_Init	14
-stm32f0xx_hal_gpio.c:299:6:HAL_GPIO_DeInit	7
+stm32f0xx_hal_gpio.c:169:6:HAL_GPIO_Init	15
+stm32f0xx_hal_gpio.c:299:6:HAL_GPIO_DeInit	8
 stm32f0xx_hal_gpio.c:382:15:HAL_GPIO_ReadPin	1
 stm32f0xx_hal_gpio.c:415:6:HAL_GPIO_WritePin	2
 stm32f0xx_hal_gpio.c:437:6:HAL_GPIO_TogglePin	1

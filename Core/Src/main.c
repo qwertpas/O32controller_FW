@@ -110,6 +110,7 @@ int main(void) {
 	MX_TIM2_Init();
 	/* USER CODE BEGIN 2 */
 
+
 	sixstep_startup();
 
 	/* USER CODE END 2 */
@@ -120,6 +121,7 @@ int main(void) {
 	while (1) {
 
 		sixstep_loop();
+
 
 		/* USER CODE END WHILE */
 
@@ -179,9 +181,6 @@ void SystemClock_Config(void) {
 static void MX_ADC_Init(void) {
 
 	/* USER CODE BEGIN ADC_Init 0 */
-
-	ADC_HandleTypeDef hadc;
-
 	/* USER CODE END ADC_Init 0 */
 
 	ADC_ChannelConfTypeDef sConfig = { 0 };
@@ -582,15 +581,6 @@ void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *I2cHandle) {
 	p.i2c_complete_flag = 1;
 }
 
-/**
- * @brief  Rx Transfer completed callback.
- * @param  I2cHandle: I2C handle
- * @note   This example shows a simple way to report end of IT Rx transfer, and
- *         you can add your own implementation.
- * @retval None
- */
-void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *I2cHandle) {
-}
 
 /**
  * @brief  Slave Address Match callback.
@@ -601,7 +591,6 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *I2cHandle) {
  * @retval None
  */
 void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode) {
-//	LED_red;
 	HAL_StatusTypeDef status;
 
 	if (TransferDirection != 0) {
@@ -615,21 +604,10 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, ui
 		Error_Handler();
 	}
 
-//	LED_green;
 }
 
-/**
- * @brief  I2C error callbacks.
- * @param  I2cHandle: I2C handle
- * @note   This example shows a simple way to report transfer error, and you can
- *         add your own implementation.
- * @retval None
- */
+
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *I2cHandle) {
-	/** Error_Handler() function is called when error occurs.
-	 * 1- When Slave doesn't acknowledge its address, Master restarts communication.
-	 * 2- When Master doesn't acknowledge the last data transferred, Slave doesn't care in this example.
-	 */
 	if (HAL_I2C_GetError(I2cHandle) != HAL_I2C_ERROR_AF) {
 		Error_Handler();
 	}

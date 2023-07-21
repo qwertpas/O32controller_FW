@@ -24,12 +24,8 @@ void sixstep_startup() {
 	//disable RS485 tranceiver driver
 	HAL_GPIO_WritePin(USART_DE_GPIO_Port, USART_DE_Pin, 0);
 
-	//	HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
-	//	HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
-
 	HAL_ADCEx_Calibration_Start(&hadc);
 
-	//don't run when not connected to actual power i think
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1); // turn on complementary channel
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
@@ -43,7 +39,7 @@ void sixstep_startup() {
 	TIM1->CCR2 = 0;
 	TIM1->CCR3 = 0;
 
-	//green, wait 3 seconds, then red to give time for flashing
+	//green, wait 2 seconds, then red to give time for flashing
 	LED_red;
 	HAL_Delay(2000);
 	LED_green;
@@ -58,7 +54,9 @@ void sixstep_startup() {
 	TIM1->CCR1 = 20;
 	TIM1->CCR2 = 0;
 	TIM1->CCR3 = 0;
+
 	HAL_Delay(1000);
+
 	for (int i = 0; i < 10; i++) { //take some angle measurements to let the sensor settle
 		HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 0);
 		HAL_SPI_TransmitReceive(&hspi1, p.spi_TX, p.spi_RX, 2, HAL_MAX_DELAY);
@@ -186,7 +184,8 @@ void sixstep_loop() {
 		rpm = (cont_angle - cont_angle_prev) / 60;
 		cont_angle_prev = cont_angle;
 
-		sprintf((char*) p.uart_TX, " adc0: %d \n adc1: %d \n adc3: %d \n\t", p.adc_vals[0], p.adc_vals[1], p.adc_vals[3]);
+		sprintf((char*) p.uart_TX, " adc0: %d \n adc1: %d \n adc3: %d \n\t", p.adc_vals[0], p.adc_vals[1],
+				p.adc_vals[3]);
 		HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 100);
 
 		p.print_flag = 0;
