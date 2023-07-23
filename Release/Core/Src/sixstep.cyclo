@@ -1,3 +1,2 @@
-sixstep.c:47:6:sixstep_startup	2
-sixstep.c:109:6:sixstep_loop	23
-sixstep.c:251:10:avg	2
+sixstep.c:52:6:sixstep_startup	2
+sixstep.c:114:6:sixstep_loop	23

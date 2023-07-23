@@ -9,6 +9,7 @@
 
 #define curr_avg_window 100
 #define adc_per_volt 1241 //4095/3.3
+#define uamp_per_adc 52351
 
 uint8_t step;
 uint16_t mag;
@@ -38,11 +39,15 @@ uint16_t adc_U = 0;
 uint16_t adc_V = 0;
 uint16_t adc_W = 0;
 
-uint16_t curr_U = 0;
-uint16_t curr_V = 0;
-uint16_t curr_W = 0;
+int32_t curr_U = 0;
+int32_t curr_V = 0;
+int32_t curr_W = 0;
 
 uint32_t sum = 0;
+
+uint32_t count = 0;
+
+
 
 void sixstep_startup() {
 	//disable RS485 tranceiver driver
@@ -200,6 +205,7 @@ void sixstep_loop() {
 		adc_buf_index = 0;
 	}
 
+	//moving average. Can combine the for loops or use a complementary filter for less RAM
 	sum = 0;
 	for (int i = 0; i < curr_avg_window; i++) sum += adc_U_buf[i];
 	adc_U = (uint16_t)(sum/curr_avg_window);
@@ -209,6 +215,12 @@ void sixstep_loop() {
 	sum = 0;
 	for (int i = 0; i < curr_avg_window; i++) sum += adc_W_buf[i];
 	adc_W = (uint16_t)(sum/curr_avg_window);
+
+
+	curr_U = uamp_per_adc * (adc_U - 2048) / 1000;
+	curr_V = uamp_per_adc * (adc_V - 2048) / 1000;
+	curr_W = uamp_per_adc * (adc_W - 2048) / 1000;
+
 
 //	adc_U = avg(adc_U_buf);
 //	adc_V = avg(adc_V_buf);
@@ -222,7 +234,7 @@ void sixstep_loop() {
 //	adc_V_filt = (100 * p.adc_vals[0] + 9900 * adc_V_filt) / 10000;
 //	adc_W_filt = (100 * p.adc_vals[1] + 9900 * adc_W_filt) / 10000;
 
-
+	count++;
 
 	if (p.print_flag) {
 
@@ -231,13 +243,14 @@ void sixstep_loop() {
 
 		memset(p.uart_TX, 0, sizeof(p.uart_TX));
 
-		sprintf((char*) p.uart_TX, " U_filt: %d \n V_filt: %d \n W_filt: %d \n \t",
-				adc_U, adc_V, adc_W);
+		sprintf((char*) p.uart_TX, " count: %ld \n U_mamp: %ld \n V_mamp: %ld \n W_mamp: %ld \n \t",
+				count, curr_U, curr_V, curr_W);
 
 //		sprintf((char*) p.uart_TX, "Helloo  \r\n\t");
 		HAL_UART_Transmit_DMA(&huart1, p.uart_TX, UARTSIZE);
 
 		p.print_flag = 0;
+		count = 0;
 
 		//restart I2C listener after a transfer
 		if (p.i2c_complete_flag == 1) {
@@ -246,29 +259,6 @@ void sixstep_loop() {
 		}
 	}
 }
-
-
-uint16_t avg(uint16_t *buf){
-	sum = 0;
-	uint8_t len = curr_avg_window;
-	for (int i = 0; i < len; i++) {
-		sum += buf[i];
-	}
-	return (uint16_t) (sum);
-}
-
-//uint32_t avg_filter(uint16_t new_val, uint16_t *buf){
-//	uint8_t len = sizeof(buf) / sizeof(buf[0]);
-//	uint32_t sum = 0;
-//	for(uint8_t i = len - 1; i > 0; i--){
-//		history[i] = history[i-1];
-//		sum += history[i];
-//	}
-//	history[0] = new_val;
-//	sum += history[0];
-//
-//	return sum / len;
-//}
 
 
 
