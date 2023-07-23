@@ -7,6 +7,9 @@
 
 #include "sixstep.h"
 
+#define curr_avg_window 100
+#define adc_per_volt 1241 //4095/3.3
+
 uint8_t step;
 uint16_t mag;
 
@@ -20,11 +23,34 @@ int32_t rpm;
 uint16_t e_offset;
 uint16_t e_angle;
 
+int16_t adc_U_offset = 3; //How much the adc values are off at no current
+int16_t adc_V_offset = -10;
+int16_t adc_W_offset = -4;
+
+
+
+uint32_t adc_U_buf[curr_avg_window] = {0};
+uint32_t adc_V_buf[curr_avg_window] = {0};
+uint32_t adc_W_buf[curr_avg_window] = {0};
+uint8_t adc_buf_index = 0;
+
+uint16_t adc_U = 0;
+uint16_t adc_V = 0;
+uint16_t adc_W = 0;
+
+uint16_t curr_U = 0;
+uint16_t curr_V = 0;
+uint16_t curr_W = 0;
+
+uint32_t sum = 0;
+
 void sixstep_startup() {
 	//disable RS485 tranceiver driver
 	HAL_GPIO_WritePin(USART_DE_GPIO_Port, USART_DE_Pin, 0);
 
-	HAL_ADCEx_Calibration_Start(&hadc);
+	HAL_ADC_Stop(&hadc); //stop adc before calibration
+	HAL_Delay(1);
+	HAL_ADCEx_Calibration_Start(&hadc); //seems like this uses VREFINT_CAL
 
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1); // turn on complementary channel
@@ -100,8 +126,9 @@ void sixstep_loop() {
 
 	int cmd = p.i2c_RX[0];
 	if (cmd == 0) {
-		HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_RESET);
+		mag = 0;
+//		HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_RESET);
+//		HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_RESET);
 	} else if (cmd >= 1 && cmd <= 8) {
 		HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_SET);
@@ -162,31 +189,53 @@ void sixstep_loop() {
 
 	//read all ADCs
 	HAL_ADC_Start_DMA(&hadc, (uint32_t*) p.adc_vals, NBR_ADC);  // start the adc in dma mode
-//	int16_t temp = (1000 * (1908 - adc_vals[4])) / 5337;
 
-	//		adc_to_volt = 3.0 * VREFINT_CAL / (adc_vals[0] * 4095.);
-	//		float volt1 = adc_vals[1] * adc_to_volt;
 
-	//		printf("temp: %d \n", temp);
+	adc_U_buf[adc_buf_index] = p.adc_vals[3] - adc_U_offset;
+	adc_V_buf[adc_buf_index] = p.adc_vals[0] - adc_V_offset;
+	adc_W_buf[adc_buf_index] = p.adc_vals[1] - adc_W_offset;
 
-	//		printf("ADC: \r\n");
-	//		for(int i = 0; i < NBR_ADC; i++){
-	//			if(i == 2){ //Vbus sensor
-	//				printf(" %d", 330*adc_vals[i] * 512 / 4095);
-	//			}else{
-	//				printf(" %d", adc_vals[i]);
-	//			}
-	//		}
-	//		printf("\r\n");
+	adc_buf_index++;
+	if (adc_buf_index >= curr_avg_window) {
+		adc_buf_index = 0;
+	}
+
+	sum = 0;
+	for (int i = 0; i < curr_avg_window; i++) sum += adc_U_buf[i];
+	adc_U = (uint16_t)(sum/curr_avg_window);
+	sum = 0;
+	for (int i = 0; i < curr_avg_window; i++) sum += adc_V_buf[i];
+	adc_V = (uint16_t)(sum/curr_avg_window);
+	sum = 0;
+	for (int i = 0; i < curr_avg_window; i++) sum += adc_W_buf[i];
+	adc_W = (uint16_t)(sum/curr_avg_window);
+
+//	adc_U = avg(adc_U_buf);
+//	adc_V = avg(adc_V_buf);
+//	adc_W = avg(adc_W_buf);
+
+//	adc_U = p.adc_vals[3] * 1000 / adc_per_volt;
+//	adc_V = p.adc_vals[0] * 1000 / adc_per_volt;
+//	adc_W = p.adc_vals[1] * 1000 / adc_per_volt;
+
+//	adc_U_filt = (100 * p.adc_vals[3] + 9900 * adc_U_filt) / 10000;
+//	adc_V_filt = (100 * p.adc_vals[0] + 9900 * adc_V_filt) / 10000;
+//	adc_W_filt = (100 * p.adc_vals[1] + 9900 * adc_W_filt) / 10000;
+
+
 
 	if (p.print_flag) {
 
 		rpm = (cont_angle - cont_angle_prev) / 60;
 		cont_angle_prev = cont_angle;
 
-		sprintf((char*) p.uart_TX, " adc0: %d \n adc1: %d \n adc3: %d \n\t", p.adc_vals[0], p.adc_vals[1],
-				p.adc_vals[3]);
-		HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 100);
+		memset(p.uart_TX, 0, sizeof(p.uart_TX));
+
+		sprintf((char*) p.uart_TX, " U_filt: %d \n V_filt: %d \n W_filt: %d \n \t",
+				adc_U, adc_V, adc_W);
+
+//		sprintf((char*) p.uart_TX, "Helloo  \r\n\t");
+		HAL_UART_Transmit_DMA(&huart1, p.uart_TX, UARTSIZE);
 
 		p.print_flag = 0;
 
@@ -197,4 +246,31 @@ void sixstep_loop() {
 		}
 	}
 }
+
+
+uint16_t avg(uint16_t *buf){
+	sum = 0;
+	uint8_t len = curr_avg_window;
+	for (int i = 0; i < len; i++) {
+		sum += buf[i];
+	}
+	return (uint16_t) (sum);
+}
+
+//uint32_t avg_filter(uint16_t new_val, uint16_t *buf){
+//	uint8_t len = sizeof(buf) / sizeof(buf[0]);
+//	uint32_t sum = 0;
+//	for(uint8_t i = len - 1; i > 0; i--){
+//		history[i] = history[i-1];
+//		sum += history[i];
+//	}
+//	history[0] = new_val;
+//	sum += history[0];
+//
+//	return sum / len;
+//}
+
+
+
+
 

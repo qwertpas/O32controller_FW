@@ -14,13 +14,15 @@
 /* Size of Transmission and receive buffer */
 #define I2CSIZE 2
 
+#define UARTSIZE 100
+
 /* 6 ADC channels in total:
- * ADC0: Phase V current
- * ADC3: Phase W current
- * ADC4: VBUS sense (5.12x voltage divider)
- * ADC9: Phase U current
- * TEMP
- * VREF
+ * [0] ADC0: Phase V current
+ * [1] ADC3: Phase W current
+ * [2] ADC4: VBUS sense (5.12x voltage divider)
+ * [3] ADC9: Phase U current
+ * [4] TEMP
+ * [5] VREF
 */
 #define NBR_ADC 6
 
@@ -79,9 +81,9 @@ typedef struct {
 	uint8_t i2c_TX[I2CSIZE];
 	uint8_t i2c_RX[I2CSIZE];
 
-	uint8_t uart_TX[100];
+	uint8_t uart_TX[UARTSIZE];
 	uint16_t uart_TX_pos;
-	uint8_t uart_RX[100];
+	uint8_t uart_RX[UARTSIZE];
 
 	/* Buffer for raw ADC readings */
 	uint16_t adc_vals[NBR_ADC];

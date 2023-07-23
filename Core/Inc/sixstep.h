@@ -11,9 +11,13 @@
 #include "global.h"
 
 #include <stdio.h>
+#include <string.h>
+
 
 void sixstep_startup();
 void sixstep_loop();
+
+uint16_t avg();
 
 
 
