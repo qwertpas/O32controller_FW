@@ -13,41 +13,36 @@
 #define ADC_FILT_LVL 8
 
 
-uint8_t step;
-uint16_t mag;
+static uint8_t step;
+static uint16_t mag;
 
-uint32_t m_angle;
-uint32_t m_angle_prev;
-int32_t revs;
-int32_t cont_angle;
-int32_t cont_angle_prev;
-int32_t rpm;
+static uint32_t m_angle;
+static uint32_t m_angle_prev;
+static int32_t revs;
+static int32_t cont_angle;
+static int32_t cont_angle_prev;
+static int32_t rpm;
 
-uint16_t e_offset;
-uint16_t e_angle;
+static uint16_t e_offset;
+static uint16_t e_angle;
 
-int16_t adc_U_offset = 3; //How much the adc values are off at no current
-int16_t adc_V_offset = -10;
-int16_t adc_W_offset = -4;
+static int16_t adc_U_offset = 3; //How much the adc values are off at no current
+static int16_t adc_V_offset = -10;
+static int16_t adc_W_offset = -4;
 
-uint32_t adc_U_accum = 0;
-uint32_t adc_V_accum = 0;
-uint32_t adc_W_accum = 0;
+static uint32_t adc_U_accum = 0;
+static uint32_t adc_V_accum = 0;
+static uint32_t adc_W_accum = 0;
 
-uint16_t adc_U = 0;
-uint16_t adc_V = 0;
-uint16_t adc_W = 0;
+static uint16_t adc_U = 0;
+static uint16_t adc_V = 0;
+static uint16_t adc_W = 0;
 
-int32_t curr_U = 0;
-int32_t curr_V = 0;
-int32_t curr_W = 0;
+static int32_t curr_U = 0;
+static int32_t curr_V = 0;
+static int32_t curr_W = 0;
 
-uint32_t sum = 0;
-
-uint32_t count = 0;
-
-HAL_StatusTypeDef status;
-
+static uint32_t count = 0;
 
 
 void foc_startup() {
@@ -209,6 +204,15 @@ void foc_loop() {
 	curr_U = UAMP_PER_ADC * (adc_U - 2048) / 1000;
 	curr_V = UAMP_PER_ADC * (adc_V - 2048) / 1000;
 	curr_W = UAMP_PER_ADC * (adc_W - 2048) / 1000;
+
+
+	//Convert phase currents to DQ currents
+
+//	float cf = cos_lut(theta);
+//	float sf = sin_lut(theta);
+//
+//	I_d = 0.6666667f * (cf * a + (SQRT3_2 * sf - .5f * cf) * b + (-SQRT3_2 * sf - .5f * cf) * c);   ///Faster DQ0 Transform
+//	I_q = 0.6666667f * (-sf * a - (-SQRT3_2*cf-.5f*sf)*b - (SQRT3_2*cf-.5f*sf)*c);
 
 
 	count++;

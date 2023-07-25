@@ -12,42 +12,37 @@
 
 #define ADC_FILT_LVL 8
 
+//static keyword makes these variables only accessible inside this file
+static uint8_t step;
+static uint16_t mag;
 
-uint8_t step;
-uint16_t mag;
+static uint32_t m_angle;
+static uint32_t m_angle_prev;
+static int32_t revs;
+static int32_t cont_angle;
+static int32_t cont_angle_prev;
+static int32_t rpm;
 
-uint32_t m_angle;
-uint32_t m_angle_prev;
-int32_t revs;
-int32_t cont_angle;
-int32_t cont_angle_prev;
-int32_t rpm;
+static uint16_t e_offset;
+static uint16_t e_angle;
 
-uint16_t e_offset;
-uint16_t e_angle;
+static int16_t adc_U_offset = 3; //How much the adc values are off at no current
+static int16_t adc_V_offset = -10;
+static int16_t adc_W_offset = -4;
 
-int16_t adc_U_offset = 3; //How much the adc values are off at no current
-int16_t adc_V_offset = -10;
-int16_t adc_W_offset = -4;
+static uint32_t adc_U_accum = 0;
+static uint32_t adc_V_accum = 0;
+static uint32_t adc_W_accum = 0;
 
-uint32_t adc_U_accum = 0;
-uint32_t adc_V_accum = 0;
-uint32_t adc_W_accum = 0;
+static uint16_t adc_U = 0;
+static uint16_t adc_V = 0;
+static uint16_t adc_W = 0;
 
-uint16_t adc_U = 0;
-uint16_t adc_V = 0;
-uint16_t adc_W = 0;
+static int32_t curr_U = 0;
+static int32_t curr_V = 0;
+static int32_t curr_W = 0;
 
-int32_t curr_U = 0;
-int32_t curr_V = 0;
-int32_t curr_W = 0;
-
-uint32_t sum = 0;
-
-uint32_t count = 0;
-
-HAL_StatusTypeDef status;
-
+static uint32_t count = 0;
 
 
 void sixstep_startup() {
