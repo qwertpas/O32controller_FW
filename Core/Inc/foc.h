@@ -8,9 +8,14 @@
 #ifndef INC_FOC_H_
 #define INC_FOC_H_
 
+#include "global.h"
+
+#include <stdio.h>
+#include <string.h>
 
 
-
+void foc_startup();
+void foc_loop();
 
 
 #endif /* INC_FOC_H_ */

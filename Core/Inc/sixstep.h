@@ -17,8 +17,6 @@
 void sixstep_startup();
 void sixstep_loop();
 
-uint16_t avg();
-
 
 
 #endif /* INC_SIXSTEP_H_ */

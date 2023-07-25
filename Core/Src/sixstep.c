@@ -7,9 +7,11 @@
 
 #include "sixstep.h"
 
-#define curr_avg_window 100
-#define adc_per_volt 1241 //4095/3.3
-#define uamp_per_adc 52351
+#define ADC_PER_VOLT 1241 //4095/3.3
+#define UAMP_PER_ADC 52351
+
+#define ADC_FILT_LVL 8
+
 
 uint8_t step;
 uint16_t mag;
@@ -28,12 +30,9 @@ int16_t adc_U_offset = 3; //How much the adc values are off at no current
 int16_t adc_V_offset = -10;
 int16_t adc_W_offset = -4;
 
-
-
-uint32_t adc_U_buf[curr_avg_window] = {0};
-uint32_t adc_V_buf[curr_avg_window] = {0};
-uint32_t adc_W_buf[curr_avg_window] = {0};
-uint8_t adc_buf_index = 0;
+uint32_t adc_U_accum = 0;
+uint32_t adc_V_accum = 0;
+uint32_t adc_W_accum = 0;
 
 uint16_t adc_U = 0;
 uint16_t adc_V = 0;
@@ -46,6 +45,8 @@ int32_t curr_W = 0;
 uint32_t sum = 0;
 
 uint32_t count = 0;
+
+HAL_StatusTypeDef status;
 
 
 
@@ -109,6 +110,8 @@ void sixstep_startup() {
 	cont_angle = 0;
 	cont_angle_prev = 0;
 	rpm = 0;
+
+
 }
 
 void sixstep_loop() {
@@ -116,6 +119,7 @@ void sixstep_loop() {
 	HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 0);
 	HAL_SPI_TransmitReceive(&hspi1, p.spi_TX, p.spi_RX, 2, HAL_MAX_DELAY);
 	HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 1);
+
 	m_angle = (uint32_t) ((p.spi_RX[0] << 8) + p.spi_RX[1] + 16384); // 0 to 32,767
 	m_angle = (m_angle * 36000 / 32768); //0 - 36000 (hundreths of degrees)
 	e_angle = ((m_angle / 100 * PPAIRS) - e_offset) % 360;
@@ -132,12 +136,9 @@ void sixstep_loop() {
 	int cmd = p.i2c_RX[0];
 	if (cmd == 0) {
 		mag = 0;
-//		HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_RESET);
-//		HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_RESET);
 	} else if (cmd >= 1 && cmd <= 8) {
 		HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_SET);
-		//			step = cmd - 1;
 
 		if (cont_angle > 36500) {
 			step = ((e_angle + 300) % 360) / 60;
@@ -196,43 +197,19 @@ void sixstep_loop() {
 	HAL_ADC_Start_DMA(&hadc, (uint32_t*) p.adc_vals, NBR_ADC);  // start the adc in dma mode
 
 
-	adc_U_buf[adc_buf_index] = p.adc_vals[3] - adc_U_offset;
-	adc_V_buf[adc_buf_index] = p.adc_vals[0] - adc_V_offset;
-	adc_W_buf[adc_buf_index] = p.adc_vals[1] - adc_W_offset;
+	adc_U = adc_U_accum >> ADC_FILT_LVL;
+	adc_U_accum = adc_U_accum - adc_U + (p.adc_vals[3] - adc_U_offset); //https://stackoverflow.com/questions/38918530/simple-low-pass-filter-in-fixed-point
 
-	adc_buf_index++;
-	if (adc_buf_index >= curr_avg_window) {
-		adc_buf_index = 0;
-	}
+	adc_V = adc_V_accum >> ADC_FILT_LVL;
+	adc_V_accum = adc_V_accum - adc_V + (p.adc_vals[0] - adc_V_offset);
 
-	//moving average. Can combine the for loops or use a complementary filter for less RAM
-	sum = 0;
-	for (int i = 0; i < curr_avg_window; i++) sum += adc_U_buf[i];
-	adc_U = (uint16_t)(sum/curr_avg_window);
-	sum = 0;
-	for (int i = 0; i < curr_avg_window; i++) sum += adc_V_buf[i];
-	adc_V = (uint16_t)(sum/curr_avg_window);
-	sum = 0;
-	for (int i = 0; i < curr_avg_window; i++) sum += adc_W_buf[i];
-	adc_W = (uint16_t)(sum/curr_avg_window);
+	adc_W = adc_W_accum >> ADC_FILT_LVL;
+	adc_W_accum = adc_W_accum - adc_W + (p.adc_vals[1] - adc_W_offset);
 
+	curr_U = UAMP_PER_ADC * (adc_U - 2048) / 1000;
+	curr_V = UAMP_PER_ADC * (adc_V - 2048) / 1000;
+	curr_W = UAMP_PER_ADC * (adc_W - 2048) / 1000;
 
-	curr_U = uamp_per_adc * (adc_U - 2048) / 1000;
-	curr_V = uamp_per_adc * (adc_V - 2048) / 1000;
-	curr_W = uamp_per_adc * (adc_W - 2048) / 1000;
-
-
-//	adc_U = avg(adc_U_buf);
-//	adc_V = avg(adc_V_buf);
-//	adc_W = avg(adc_W_buf);
-
-//	adc_U = p.adc_vals[3] * 1000 / adc_per_volt;
-//	adc_V = p.adc_vals[0] * 1000 / adc_per_volt;
-//	adc_W = p.adc_vals[1] * 1000 / adc_per_volt;
-
-//	adc_U_filt = (100 * p.adc_vals[3] + 9900 * adc_U_filt) / 10000;
-//	adc_V_filt = (100 * p.adc_vals[0] + 9900 * adc_V_filt) / 10000;
-//	adc_W_filt = (100 * p.adc_vals[1] + 9900 * adc_W_filt) / 10000;
 
 	count++;
 
@@ -243,8 +220,8 @@ void sixstep_loop() {
 
 		memset(p.uart_TX, 0, sizeof(p.uart_TX));
 
-		sprintf((char*) p.uart_TX, " count: %ld \n U_mamp: %ld \n V_mamp: %ld \n W_mamp: %ld \n \t",
-				count, curr_U, curr_V, curr_W);
+		sprintf((char*) p.uart_TX, " U_mamp: %d \n V_mamp: %d \n W_mamp: %d \n \t",
+				adc_U, adc_V, adc_W);
 
 //		sprintf((char*) p.uart_TX, "Helloo  \r\n\t");
 		HAL_UART_Transmit_DMA(&huart1, p.uart_TX, UARTSIZE);
