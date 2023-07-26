@@ -67,9 +67,9 @@ void sixstep_startup() {
 	TIM1->CCR3 = 0;
 
 	//green, wait 2 seconds, then red to give time for flashing
-	LED_red;
+	LED_RED;
 	HAL_Delay(2000);
-	LED_green;
+	LED_GREEN;
 	HAL_Delay(100);
 
 	HAL_I2C_EnableListen_IT(&hi2c1);

@@ -620,7 +620,7 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *I2cHandle) {
 void Error_Handler(void) {
 	/* USER CODE BEGIN Error_Handler_Debug */
 	/* User can add his own implementation to report the HAL error return state */
-	LED_red;
+	LED_RED;
 	printf("ERROR HANDLER \n");
 	__disable_irq();		//disable interrupts
 	NVIC_SystemReset(); //reset microcontroller, clearing any I2C faults. Maybe change to only

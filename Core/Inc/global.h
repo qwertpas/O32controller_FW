@@ -63,8 +63,15 @@
 #define OC_TH_STBY1_Pin GPIO_PIN_7
 #define OC_TH_STBY1_GPIO_Port GPIOF
 
-#define LED_red HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, 1)
-#define LED_green HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, 0)
+#define LED_RED HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, 1)
+#define LED_GREEN HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, 0)
+
+#define ENABLE_DRIVE \
+	HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, 1); \
+	HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, 1);
+#define DISABLE_DRIVE \
+	HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, 0); \
+	HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, 0);
 
 
 extern ADC_HandleTypeDef hadc;
