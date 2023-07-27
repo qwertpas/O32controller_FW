@@ -12,10 +12,9 @@
 
 #define ADC_FILT_LVL 8
 
-#define Q8_1 256 // (1) << 8
-#define Q16_2_3 171 // (2/3) << 16
-#define Q16_SQRT3_2 223 // (sqrt(3)/2) << 16
-#define Q16_1_2 128 // (1/2) << 16
+#define Q16_2_3 ((uint16_t) 43691) 		// (2/3) * 2^16
+#define Q16_SQRT3_2 ((uint16_t) 56756) 	// (sqrt(3)/2) * 2^16
+#define Q16_1_2 ((uint16_t) 32768) 		// (1/2) * 2^16
 
 static uint8_t step;
 static uint16_t mag;
@@ -30,25 +29,25 @@ static int32_t rpm;
 static uint16_t e_offset;
 static uint32_t e_angle;
 
-static int16_t adc_U_offset = 3; //How much the adc values are off at no current
-static int16_t adc_V_offset = -10;
-static int16_t adc_W_offset = -4;
+static int16_t adc_U_offset = 2048 + 3; //How much the adc values are off at no current, offset by 2048 to center zero current at 0
+static int16_t adc_V_offset = 2048 + -10;
+static int16_t adc_W_offset = 2048 + -4;
 
 static uint32_t adc_u_accum = 0;
 static uint32_t adc_v_accum = 0;
 static uint32_t adc_w_accum = 0;
 
-static uint16_t adc_u = 0;
-static uint16_t adc_v = 0;
-static uint16_t adc_w = 0;
+//static uint16_t adc_u = 0;
+//static uint16_t adc_v = 0;
+//static uint16_t adc_w = 0;
 
 static int32_t I_u = 0;
 static int32_t I_v = 0;
 static int32_t I_w = 0;
 
-static uint8_t angle_lut = 0;
-static int16_t sin_t = 0;
-static int16_t cos_t = 0;
+//static uint8_t angle_lut = 0;
+//static int16_t sin_t = 0;
+//static int16_t cos_t = 0;
 
 static int32_t I_d = 0;
 static int32_t I_q = 0;
@@ -96,10 +95,12 @@ void foc_startup() {
 
 	HAL_Delay(1000);
 
-	for (int i = 0; i < 10; i++) { //take some angle measurements to let the sensor settle
+	for (int i = 0; i < 10; i++) { //take some measurements to let the sensors settle
 		HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 0);
 		HAL_SPI_TransmitReceive(&hspi1, p.spi_TX, p.spi_RX, 2, HAL_MAX_DELAY);
 		HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 1);
+
+		HAL_ADC_Start_DMA(&hadc, (uint32_t*) p.adc_vals, NBR_ADC);  // start the adc in dma mode
 	}
 	// 780.19 angle counts per 1/6th of an electrical cycle
 	// 4681.14 angle counts per electrical cycle
@@ -125,8 +126,8 @@ void foc_loop() {
 	HAL_SPI_TransmitReceive(&hspi1, p.spi_TX, p.spi_RX, 2, HAL_MAX_DELAY);
 	HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 1);
 
-	m_angle = ((uint16_t) (p.spi_RX[0]) << 8) + p.spi_RX[1] + 16384; // 0 to 32,767 (~91 per degree)
-	e_angle = (m_angle * PPAIRS - e_offset) & (32768 - 1); //convert to electrical angle, modulo 32768
+	m_angle = ((uint16_t) (p.spi_RX[0]) << 8) + p.spi_RX[1] + 16384; // [0,32767] (~91 per degree)
+	e_angle = (m_angle * PPAIRS - e_offset) & (32768 - 1); //convert to electrical angle and modulo, [0,32767]
 
 	if (m_angle_prev < 8192 && m_angle > 24576) { //detect angle wraparound and increment a revolution
 		revs -= 32768;
@@ -137,91 +138,44 @@ void foc_loop() {
 	m_angle_prev = m_angle;
 
 
-	//Handle i2c commands
-	int cmd = p.i2c_RX[0];
-	if (cmd == 0) {
-		mag = 0;
-	} else if (cmd >= 1 && cmd <= 8) {
-		ENABLE_DRIVE;
 
-		if (cont_angle > 36500) {
-			step = ((e_angle + 300) % 360) / 60;
-			mag = (cont_angle - 36500) / 100;
-		} else if (cont_angle < 35500) {
-			step = ((e_angle + 120) % 360) / 60;
-			mag = (35500 - cont_angle) / 100;
-		} else {
-			mag = 0;
-		}
+	//read ADCs
+	HAL_ADC_Start_DMA(&hadc, (uint32_t*) p.adc_vals, NBR_ADC);
 
-		if (mag > cmd * 10) {
-			mag = cmd * 10;
-		}
+	//filter ADC values (https://stackoverflow.com/questions/38918530/simple-low-pass-filter-in-fixed-point)
+	//phase currents are in adc units [-2048, 2047] (1 bit sign, 11 bit value)
+	//to get current in milliamps, multiply by UAMP_PER_ADC then divide by 1000
+	I_u = I_u_accum >> ADC_FILT_LVL;
+	I_u_accum = I_u_accum - I_u + (p.adc_vals[3] - adc_U_offset);
 
-	} else if (cmd == 9) {
-		ENABLE_DRIVE;
-		step = ((e_angle + 120) % 360) / 60;
-	}
+	I_v = I_v_accum >> ADC_FILT_LVL;
+	I_v_accum = I_v_accum - I_v + (p.adc_vals[0] - adc_V_offset);
 
-	if (step == 0) {
-		TIM1->CCR1 = mag;
-		TIM1->CCR2 = 0;
-		TIM1->CCR3 = 0;
-	}
-	if (step == 1) {
-		TIM1->CCR1 = mag;
-		TIM1->CCR2 = mag;
-		TIM1->CCR3 = 0;
-	}
-	if (step == 2) {
-		TIM1->CCR1 = 0;
-		TIM1->CCR2 = mag;
-		TIM1->CCR3 = 0;
-	}
-	if (step == 3) {
-		TIM1->CCR1 = 0;
-		TIM1->CCR2 = mag;
-		TIM1->CCR3 = mag;
-	}
-	if (step == 4) {
-		TIM1->CCR1 = 0;
-		TIM1->CCR2 = 0;
-		TIM1->CCR3 = mag;
-	}
-	if (step == 5) {
-		TIM1->CCR1 = mag;
-		TIM1->CCR2 = 0;
-		TIM1->CCR3 = mag;
-	}
+	I_w = I_w_accum >> ADC_FILT_LVL;
+	I_w_accum = I_w_accum - I_w + (p.adc_vals[1] - adc_W_offset);
 
-	//read all ADCs
-	HAL_ADC_Start_DMA(&hadc, (uint32_t*) p.adc_vals, NBR_ADC);  // start the adc in dma mode
 
-	adc_u = adc_u_accum >> ADC_FILT_LVL;
-	adc_u_accum = adc_u_accum - adc_u + (p.adc_vals[3] - adc_U_offset); //https://stackoverflow.com/questions/38918530/simple-low-pass-filter-in-fixed-point
-
-	adc_v = adc_v_accum >> ADC_FILT_LVL;
-	adc_v_accum = adc_v_accum - adc_v + (p.adc_vals[0] - adc_V_offset);
-
-	adc_w = adc_w_accum >> ADC_FILT_LVL;
-	adc_w_accum = adc_w_accum - adc_w + (p.adc_vals[1] - adc_W_offset);
-
-	I_u = UAMP_PER_ADC * (adc_u - 2048) / 1000;
-	I_v = UAMP_PER_ADC * (adc_v - 2048) / 1000;
-	I_w = UAMP_PER_ADC * (adc_w - 2048) / 1000;
 
 	//Convert phase currents to DQ currents
-	angle_lut = e_angle >> 7; //scale angle to 0-255 for lookup table
+	uint8_t angle_lut = e_angle >> 7; //scale e_angle [0,32767] to [0,255] for lookup table
 
-	sin_t = sin_lut[angle_lut];
-	cos_t = sin_lut[(64 - angle_lut) & (256 - 1)]; //64 out of 256 is the equilvalent of 90º/360º. Modulo 256.
+    //each term below has 16 fractional bits and is signed
+    int16_t Q16_sin_t = sin_lut[angle_lut];
+    int16_t Q16_cos_t = sin_lut[(64 - angle_lut) & (256 - 1)]; //64 out of 256 is the equilvalent of 90º/360º. Modulo 256.
 
-	//calculations shifted 15 bits up to match sin table
-	I_d = ( Q8_2_3 * (Q8_1*cos_t*I_u + ( Q8_SQRT3_2*sin_t - Q8_1_2*cos_t)*I_v + (-Q8_SQRT3_2*sin_t - Q8_1_2*cos_t)*I_w)) >> 16;
-	I_q = (-Q8_2_3 * (Q8_1*sin_t*I_u + (-Q8_SQRT3_2*cos_t - Q8_1_2*sin_t)*I_v + ( Q8_SQRT3_2*cos_t - Q8_1_2*sin_t)*I_w)) >> 16;
+    int16_t Q16_SQRT3_2_sin_t = (Q16_SQRT3_2*Q16_sin_t) >> 16;
+    int16_t Q16_SQRT3_2_cos_t = (Q16_SQRT3_2*Q16_cos_t) >> 16;
+    int16_t Q16_1_2_sin_t = (Q16_1_2*Q16_sin_t) >> 16;
+    int16_t Q16_1_2_cos_t = (Q16_1_2*Q16_cos_t) >> 16;
 
-//	I_d = 0.6666667f * (cf * a + (SQRT3_2 * sf - .5f * cf) * b + (-SQRT3_2 * sf - .5f * cf) * c);   ///Faster DQ0 Transform
-//	I_q = 0.6666667f * (-sf * a - (-SQRT3_2*cf-.5f*sf)*b - (SQRT3_2*cf-.5f*sf)*c);
+    I_d = ( Q16_cos_t*I_u + ( Q16_SQRT3_2_sin_t - Q16_1_2_cos_t)*I_v + (-Q16_SQRT3_2_sin_t - Q16_1_2_cos_t)*I_w) >> 15;
+    I_d = (I_d * Q16_2_3) >> 16;
+    I_q = ( Q16_sin_t*I_u + (-Q16_SQRT3_2_cos_t - Q16_1_2_sin_t)*I_v + ( Q16_SQRT3_2_cos_t - Q16_1_2_sin_t)*I_w) >> 15;
+    I_q = (I_q * -Q16_2_3) >> 16;
+
+
+
+
 
 	count++;
 
