@@ -264,7 +264,9 @@ void foc_loop() {
     V_v = (tmp_v1 * V_d - tmp_v2 * V_q) >> 16;
     V_w = (tmp_w1 * V_d - tmp_w2 * V_q) >> 16;
 
-    V_u =
+    V_u = clip(V_u, -32, 32);
+    V_v = clip(V_u, -32, 32);
+    V_w = clip(V_u, -32, 32);
 
         *a = cf*d - sf*q;
         *b = (SQRT3_2*sf-.5f*cf)*d - (-SQRT3_2*cf-.5f*sf)*q;
