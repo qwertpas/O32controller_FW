@@ -55,10 +55,33 @@ static int16_t I_q_filt = 0;
 
 //current setpoints
 static int16_t I_d_des = 0; //usually 0 unless field weakening
+static int16_t I_d_error = 0;
+static int32_t I_d_error_int = 0;
+
 static int16_t I_q_des = 0;
+static int16_t I_q_error = 0;
+static int32_t I_q_error_int = 0;
+
+
+//DQ voltage commands
+static int16_t V_d = 0; //usually 0 unless field weakening
+static int16_t V_q = 0; //usually 0 unless field weakening
+
 
 static uint32_t count = 0; //incremented every loop, reset at 100Hz
 static uint16_t loop_freq = 0; //Hz, calculated at 100Hz using count
+
+
+int16_t clip(int16_t x, int16_t min, int16_t max){
+    if(x > max){
+    	return max;
+    }else if(x < min){
+    	return min;
+    }else{
+    	return x;
+    }
+}
+
 
 void foc_startup() {
 
@@ -192,7 +215,8 @@ void foc_loop() {
     //Handle i2c commands
     int cmd = p.i2c_RX[0];
 	if (cmd == 0) {
-		mag = 0;
+//		mag = 0;
+		I_q = 0;
 	} else if (cmd >= 1 && cmd <= 8) {
 
 //		//hold angle with six step
@@ -209,47 +233,83 @@ void foc_loop() {
 //			mag = cmd * 10;
 //		}
 
-
 		I_q = cmd * 10;
 
 	} else if (cmd == 9) {
-		step = ((e_angle + 10923) & (32768-1)) / 5461;
+		step = ((e_angle + 10923) & (32768-1)) / 5461; //six step
 	}
+
+
+	I_d_error = I_d_des - I_d;
+	I_q_error = I_q_des - I_q;
+
+	I_d_error_int = clip(I_d_error_int + I_d_error, -32, 32);
+	I_q_error_int = clip(I_q_error_int + I_q_error, -32, 32);
+
+	//PI+feedforward control loop
+	//Voltage is scaled to [-32768,32767]
+    V_d = KP_d*I_d_error + KI_d*I_d_error_int + KF_d*I_d_des;
+    V_q = KP_q*I_q_error + KI_q*I_q_error_int + KF_q*I_q_des;
+    V_d = clip(V_d, -32, 32);
+    V_q = clip(V_q, -32, 32);
+
+
+    //Convert DQ voltages to phase voltages
+    int16_t tmp_v1 = ( Q16_SQRT3_2 * Q16_sin_t - Q16_1_2 * Q16_cos_t) >> 16;
+    int16_t tmp_v2 = (-Q16_SQRT3_2 * Q16_cos_t - Q16_1_2 * Q16_sin_t) >> 16;
+    int16_t tmp_w1 = (-Q16_SQRT3_2 * Q16_sin_t - Q16_1_2 * Q16_cos_t) >> 16;
+    int16_t tmp_w2 = ( Q16_SQRT3_2 * Q16_cos_t - Q16_1_2 * Q16_sin_t) >> 16;
+
+    V_u = (Q16_cos_t * V_d - Q16_sin_t * V_q) >> 16;
+    V_v = (tmp_v1 * V_d - tmp_v2 * V_q) >> 16;
+    V_w = (tmp_w1 * V_d - tmp_w2 * V_q) >> 16;
+
+    V_u =
+
+        *a = cf*d - sf*q;
+        *b = (SQRT3_2*sf-.5f*cf)*d - (-SQRT3_2*cf-.5f*sf)*q;
+        *c = (-SQRT3_2*sf-.5f*cf)*d - (SQRT3_2*cf-.5f*sf)*q;
 
 
 
 
-	//six-step commutation
-	if (step == 0) {
-		TIM1->CCR1 = mag;
-		TIM1->CCR2 = 0;
-		TIM1->CCR3 = 0;
-	}
-	if (step == 1) {
-		TIM1->CCR1 = mag;
-		TIM1->CCR2 = mag;
-		TIM1->CCR3 = 0;
-	}
-	if (step == 2) {
-		TIM1->CCR1 = 0;
-		TIM1->CCR2 = mag;
-		TIM1->CCR3 = 0;
-	}
-	if (step == 3) {
-		TIM1->CCR1 = 0;
-		TIM1->CCR2 = mag;
-		TIM1->CCR3 = mag;
-	}
-	if (step == 4) {
-		TIM1->CCR1 = 0;
-		TIM1->CCR2 = 0;
-		TIM1->CCR3 = mag;
-	}
-	if (step == 5) {
-		TIM1->CCR1 = mag;
-		TIM1->CCR2 = 0;
-		TIM1->CCR3 = mag;
-	}
+    controller->d_int += controller->k_d*controller->ki_d*i_d_error;
+    controller->d_int = fast_fmaxf(fast_fminf(controller->d_int, controller->v_max), -controller->v_max);
+
+
+
+
+//	//six-step commutation
+//	if (step == 0) {
+//		TIM1->CCR1 = mag;
+//		TIM1->CCR2 = 0;
+//		TIM1->CCR3 = 0;
+//	}
+//	if (step == 1) {
+//		TIM1->CCR1 = mag;
+//		TIM1->CCR2 = mag;
+//		TIM1->CCR3 = 0;
+//	}
+//	if (step == 2) {
+//		TIM1->CCR1 = 0;
+//		TIM1->CCR2 = mag;
+//		TIM1->CCR3 = 0;
+//	}
+//	if (step == 3) {
+//		TIM1->CCR1 = 0;
+//		TIM1->CCR2 = mag;
+//		TIM1->CCR3 = mag;
+//	}
+//	if (step == 4) {
+//		TIM1->CCR1 = 0;
+//		TIM1->CCR2 = 0;
+//		TIM1->CCR3 = mag;
+//	}
+//	if (step == 5) {
+//		TIM1->CCR1 = mag;
+//		TIM1->CCR2 = 0;
+//		TIM1->CCR3 = mag;
+//	}
 
 
 
