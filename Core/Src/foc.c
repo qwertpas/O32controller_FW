@@ -10,7 +10,8 @@
 #define ADC_PER_VOLT 1241 //4095/3.3
 #define UAMP_PER_ADC 52351
 
-#define ADC_FILT_LVL 8
+#define ADC_FILT_LVL 0
+#define DQ_FILT_LVL 8
 
 #define Q16_2_3 ((uint16_t) 43691) 		// (2/3) * 2^16
 #define Q16_SQRT3_2 ((uint16_t) 56756) 	// (sqrt(3)/2) * 2^16
@@ -21,41 +22,44 @@ static uint16_t mag;
 
 static uint16_t m_angle;
 static uint16_t m_angle_prev;
-static int16_t revs;
+static int32_t revs;
 static int32_t cont_angle;
 static int32_t cont_angle_prev;
 static int32_t rpm;
 
 static uint16_t e_offset;
-static uint32_t e_angle;
+static uint16_t e_angle;
 
-static int16_t adc_U_offset = 2048 + 3; //How much the adc values are off at no current, offset by 2048 to center zero current at 0
+//How much the adc values are off at no current, offset by 2048 to center zero current at 0
+static int16_t adc_U_offset = 2048 + 3;
 static int16_t adc_V_offset = 2048 + -10;
 static int16_t adc_W_offset = 2048 + -4;
 
-static uint32_t adc_u_accum = 0;
-static uint32_t adc_v_accum = 0;
-static uint32_t adc_w_accum = 0;
+//units are in ADC counts [-2048,2047]
+static int16_t I_u = 0;
+static int16_t I_v = 0;
+static int16_t I_w = 0;
 
-//static uint16_t adc_u = 0;
-//static uint16_t adc_v = 0;
-//static uint16_t adc_w = 0;
+//used for filtering
+static int32_t I_u_accum = 0;
+static int32_t I_v_accum = 0;
+static int32_t I_w_accum = 0;
 
-static int32_t I_u = 0;
-static int32_t I_v = 0;
-static int32_t I_w = 0;
-
-//static uint8_t angle_lut = 0;
-//static int16_t sin_t = 0;
-//static int16_t cos_t = 0;
-
-static int32_t I_d = 0;
-static int32_t I_q = 0;
+//units are in ADC counts [-2048,2047]
+static int16_t I_d = 0;
+static int16_t I_q = 0;
+static int32_t I_d_accum = 0;
+static int32_t I_q_accum = 0;
+static int16_t I_d_filt = 0;
+static int16_t I_q_filt = 0;
 
 static uint32_t count = 0; //incremented every loop, reset at 100Hz
 static uint16_t loop_freq = 0; //Hz, calculated at 100Hz using count
 
 void foc_startup() {
+
+	DISABLE_DRIVE;
+
 	//disable RS485 tranceiver driver
 	HAL_GPIO_WritePin(USART_DE_GPIO_Port, USART_DE_Pin, 0);
 
@@ -85,8 +89,7 @@ void foc_startup() {
 	HAL_I2C_EnableListen_IT(&hi2c1);
 
 	//get out of standby mode to allow gate drive
-	ENABLE_DRIVE
-	;
+	ENABLE_DRIVE;
 
 	//move to step 0
 	TIM1->CCR1 = 20;
@@ -126,8 +129,9 @@ void foc_loop() {
 	HAL_SPI_TransmitReceive(&hspi1, p.spi_TX, p.spi_RX, 2, HAL_MAX_DELAY);
 	HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 1);
 
-	m_angle = ((uint16_t) (p.spi_RX[0]) << 8) + p.spi_RX[1] + 16384; // [0,32767] (~91 per degree)
-	e_angle = (m_angle * PPAIRS - e_offset) & (32768 - 1); //convert to electrical angle and modulo, [0,32767]
+	//angles represented in [0,32767] (~91 per degree)
+	m_angle = ((uint16_t) (p.spi_RX[0]) << 8) + p.spi_RX[1] + 16384;
+	e_angle = (m_angle * PPAIRS - e_offset) & (32768 - 1); //convert to electrical angle and modulo
 
 	if (m_angle_prev < 8192 && m_angle > 24576) { //detect angle wraparound and increment a revolution
 		revs -= 32768;
@@ -156,13 +160,14 @@ void foc_loop() {
 
 
 
-	//Convert phase currents to DQ currents
+	//Convert phase currents to DQ currents:
 	uint8_t angle_lut = e_angle >> 7; //scale e_angle [0,32767] to [0,255] for lookup table
 
-    //each term below has 16 fractional bits and is signed
+    //each term below has 16 fractional bits and is signed, floating point equilvalent < 1
     int16_t Q16_sin_t = sin_lut[angle_lut];
     int16_t Q16_cos_t = sin_lut[(64 - angle_lut) & (256 - 1)]; //64 out of 256 is the equilvalent of 90º/360º. Modulo 256.
 
+    //some intermediate rounding, final error in Iq, Id is around 1%
     int16_t Q16_SQRT3_2_sin_t = (Q16_SQRT3_2*Q16_sin_t) >> 16;
     int16_t Q16_SQRT3_2_cos_t = (Q16_SQRT3_2*Q16_cos_t) >> 16;
     int16_t Q16_1_2_sin_t = (Q16_1_2*Q16_sin_t) >> 16;
@@ -173,6 +178,71 @@ void foc_loop() {
     I_q = ( Q16_sin_t*I_u + (-Q16_SQRT3_2_cos_t - Q16_1_2_sin_t)*I_v + ( Q16_SQRT3_2_cos_t - Q16_1_2_sin_t)*I_w) >> 15;
     I_q = (I_q * -Q16_2_3) >> 16;
 
+	I_d_filt = I_d_accum >> DQ_FILT_LVL;
+	I_d_accum = I_d_accum - I_d_filt + I_d;
+
+	I_q_filt = I_q_accum >> DQ_FILT_LVL;
+	I_q_accum = I_q_accum - I_q_filt + I_q;
+
+
+    //Handle i2c commands
+    int cmd = p.i2c_RX[0];
+	if (cmd == 0) {
+		mag = 0;
+	} else if (cmd >= 1 && cmd <= 8) {
+
+		if (cont_angle > 32868) {
+			step = ((e_angle + 27307) & (32768-1)) / 5461;
+			mag = (cont_angle - 32868) / 100;
+		} else if (cont_angle < 32668) {
+			step = ((e_angle + 10923) & (32768-1)) / 5461;
+			mag = (32668 - cont_angle) / 100;
+		} else {
+			mag = 0;
+		}
+
+		if (mag > cmd * 10) {
+			mag = cmd * 10;
+		}
+
+	} else if (cmd == 9) {
+		step = ((e_angle + 10923) & (32768-1)) / 5461;
+	}
+
+
+
+
+	//six-step commutation
+	if (step == 0) {
+		TIM1->CCR1 = mag;
+		TIM1->CCR2 = 0;
+		TIM1->CCR3 = 0;
+	}
+	if (step == 1) {
+		TIM1->CCR1 = mag;
+		TIM1->CCR2 = mag;
+		TIM1->CCR3 = 0;
+	}
+	if (step == 2) {
+		TIM1->CCR1 = 0;
+		TIM1->CCR2 = mag;
+		TIM1->CCR3 = 0;
+	}
+	if (step == 3) {
+		TIM1->CCR1 = 0;
+		TIM1->CCR2 = mag;
+		TIM1->CCR3 = mag;
+	}
+	if (step == 4) {
+		TIM1->CCR1 = 0;
+		TIM1->CCR2 = 0;
+		TIM1->CCR3 = mag;
+	}
+	if (step == 5) {
+		TIM1->CCR1 = mag;
+		TIM1->CCR2 = 0;
+		TIM1->CCR3 = mag;
+	}
 
 
 
@@ -182,18 +252,21 @@ void foc_loop() {
 	if (p.print_flag) { //100Hz clock
 
 		rpm = ((cont_angle - cont_angle_prev)*100*60) >> 15; //should be accurate within reasonable RPM range if 32-bit
+		cont_angle_prev = cont_angle;
 
 		loop_freq = count * 100;
+		count = 0;
 
 		memset(p.uart_TX, 0, sizeof(p.uart_TX));
 
-		sprintf((char*) p.uart_TX, " I_u: %d \n I_v: %d \n I_w: %d \n I_d: %d \n I_q: %d \n \t", I_u, I_v, I_w, I_d, I_q);
+		sprintf((char*) p.uart_TX, " I_d_filt: %d \n I_q_filt: %d \n \t", I_d_filt, I_q_filt);
+//		sprintf((char*) p.uart_TX, " I_u: %d \n I_v: %d \n I_w: %d \n I_d: %d \n I_q: %d \n \t", I_u, I_v, I_w, I_d, I_q);
+//		sprintf((char*) p.uart_TX, " rpm: %ld\n m_angle: %d\n e_angle: %d\n revs: %ld\n cont_angle: %ld\n \t", rpm, m_angle, e_angle, revs, cont_angle);
 
 //		sprintf((char*) p.uart_TX, "Helloo  \r\n\t");
 		HAL_UART_Transmit_DMA(&huart1, p.uart_TX, UARTSIZE);
 
 		p.print_flag = 0;
-		count = 0;
 
 		//restart I2C listener after a transfer
 		if (p.i2c_complete_flag == 1) {
