@@ -53,6 +53,10 @@ static int32_t I_q_accum = 0;
 static int16_t I_d_filt = 0;
 static int16_t I_q_filt = 0;
 
+//current setpoints
+static int16_t I_d_des = 0; //usually 0 unless field weakening
+static int16_t I_q_des = 0;
+
 static uint32_t count = 0; //incremented every loop, reset at 100Hz
 static uint16_t loop_freq = 0; //Hz, calculated at 100Hz using count
 
@@ -191,19 +195,22 @@ void foc_loop() {
 		mag = 0;
 	} else if (cmd >= 1 && cmd <= 8) {
 
-		if (cont_angle > 32868) {
-			step = ((e_angle + 27307) & (32768-1)) / 5461;
-			mag = (cont_angle - 32868) / 100;
-		} else if (cont_angle < 32668) {
-			step = ((e_angle + 10923) & (32768-1)) / 5461;
-			mag = (32668 - cont_angle) / 100;
-		} else {
-			mag = 0;
-		}
+//		//hold angle with six step
+//		if (cont_angle > 32868) {
+//			step = ((e_angle + 27307) & (32768-1)) / 5461;
+//			mag = (cont_angle - 32868) / 100;
+//		} else if (cont_angle < 32668) {
+//			step = ((e_angle + 10923) & (32768-1)) / 5461;
+//			mag = (32668 - cont_angle) / 100;
+//		} else {
+//			mag = 0;
+//		}
+//		if (mag > cmd * 10) {
+//			mag = cmd * 10;
+//		}
 
-		if (mag > cmd * 10) {
-			mag = cmd * 10;
-		}
+
+		I_q = cmd * 10;
 
 	} else if (cmd == 9) {
 		step = ((e_angle + 10923) & (32768-1)) / 5461;
@@ -259,7 +266,7 @@ void foc_loop() {
 
 		memset(p.uart_TX, 0, sizeof(p.uart_TX));
 
-		sprintf((char*) p.uart_TX, " I_d_filt: %d \n I_q_filt: %d \n \t", I_d_filt, I_q_filt);
+		sprintf((char*) p.uart_TX, " freq: %d\n I_d_filt: %d\n I_q_filt: %d\n \t", loop_freq, I_d_filt, I_q_filt);
 //		sprintf((char*) p.uart_TX, " I_u: %d \n I_v: %d \n I_w: %d \n I_d: %d \n I_q: %d \n \t", I_u, I_v, I_w, I_d, I_q);
 //		sprintf((char*) p.uart_TX, " rpm: %ld\n m_angle: %d\n e_angle: %d\n revs: %ld\n cont_angle: %ld\n \t", rpm, m_angle, e_angle, revs, cont_angle);
 
