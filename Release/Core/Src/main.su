@@ -2,7 +2,7 @@
 ../Core/Src/main.c:567:6:HAL_TIM_PeriodElapsedCallback	0	static
 ../Core/Src/main.c:581:6:HAL_I2C_SlaveTxCpltCallback	0	static
 ../Core/Src/main.c:621:6:Error_Handler	8	static,ignoring_inline_asm
-../Core/Src/main.c:137:6:SystemClock_Config	96	static
-../Core/Src/main.c:81:5:main	192	static
+../Core/Src/main.c:137:6:SystemClock_Config	88	static
+../Core/Src/main.c:81:5:main	184	static
 ../Core/Src/main.c:593:6:HAL_I2C_AddrCallback	8	static
 ../Core/Src/main.c:609:6:HAL_I2C_ErrorCallback	8	static

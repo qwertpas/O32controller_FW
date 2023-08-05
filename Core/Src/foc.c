@@ -17,6 +17,13 @@
 #define Q16_SQRT3_2 ((uint16_t) 56756) 	// (sqrt(3)/2) * 2^16
 #define Q16_1_2 ((uint16_t) 32768) 		// (1/2) * 2^16
 
+#define KP_d 0
+#define KI_d 0
+#define KF_d 0
+#define KP_q 0
+#define KI_q 0
+#define KF_q 0
+
 static uint8_t step;
 static uint16_t mag;
 
@@ -187,23 +194,28 @@ void foc_loop() {
 
 
 
-	//Convert phase currents to DQ currents:
+	//Convert phase currents to DQ currents (DQ0 transform):
 	uint8_t angle_lut = e_angle >> 7; //scale e_angle [0,32767] to [0,255] for lookup table
 
-    //each term below has 16 fractional bits and is signed, floating point equilvalent < 1
+    //each term below has 15 fractional bits and is signed, floating point equilvalent < 1
     int16_t Q16_sin_t = sin_lut[angle_lut];
-    int16_t Q16_cos_t = sin_lut[(64 - angle_lut) & (256 - 1)]; //64 out of 256 is the equilvalent of 90º/360º. Modulo 256.
+    int16_t Q16_cos_t;
+	if(angle_lut < 64){
+		Q16_cos_t = sin_lut[(64 - angle_lut) & (256 - 1)]; ///64 out of 256 is the equilvalent of 90º/360º. &255 is mod256.
+	}else{
+		Q16_cos_t = sin_lut[(63 - angle_lut) & (256 - 1)];
+	}
 
-    //some intermediate rounding, final error in Iq, Id is around 1%
+    //some intermediate rounding, avg errors in Iq and Id are around 0.1%
     int16_t Q16_SQRT3_2_sin_t = (Q16_SQRT3_2*Q16_sin_t) >> 16;
     int16_t Q16_SQRT3_2_cos_t = (Q16_SQRT3_2*Q16_cos_t) >> 16;
     int16_t Q16_1_2_sin_t = (Q16_1_2*Q16_sin_t) >> 16;
     int16_t Q16_1_2_cos_t = (Q16_1_2*Q16_cos_t) >> 16;
 
-    I_d = ( Q16_cos_t*I_u + ( Q16_SQRT3_2_sin_t - Q16_1_2_cos_t)*I_v + (-Q16_SQRT3_2_sin_t - Q16_1_2_cos_t)*I_w) >> 15;
-    I_d = (I_d * Q16_2_3) >> 16;
-    I_q = ( Q16_sin_t*I_u + (-Q16_SQRT3_2_cos_t - Q16_1_2_sin_t)*I_v + ( Q16_SQRT3_2_cos_t - Q16_1_2_sin_t)*I_w) >> 15;
-    I_q = (I_q * -Q16_2_3) >> 16;
+    I_d = ( Q16_cos_t*I_u + ( Q16_SQRT3_2_sin_t - Q16_1_2_cos_t)*I_v + (-Q16_SQRT3_2_sin_t - Q16_1_2_cos_t)*I_w) >> 16;
+    I_q = ( Q16_sin_t*I_u + (-Q16_SQRT3_2_cos_t - Q16_1_2_sin_t)*I_v + ( Q16_SQRT3_2_cos_t - Q16_1_2_sin_t)*I_w) >> 16;
+    I_d = (I_d * Q16_2_3) >> 15;
+    I_q = (I_q * -Q16_2_3) >> 15;
 
 	I_d_filt = I_d_accum >> DQ_FILT_LVL;
 	I_d_accum = I_d_accum - I_d_filt + I_d;
@@ -240,6 +252,7 @@ void foc_loop() {
 	}
 
 
+
 	I_d_error = I_d_des - I_d;
 	I_q_error = I_q_des - I_q;
 
@@ -254,29 +267,15 @@ void foc_loop() {
     V_q = clip(V_q, -32, 32);
 
 
-    //Convert DQ voltages to phase voltages
-    int16_t tmp_v1 = ( Q16_SQRT3_2 * Q16_sin_t - Q16_1_2 * Q16_cos_t) >> 16;
-    int16_t tmp_v2 = (-Q16_SQRT3_2 * Q16_cos_t - Q16_1_2 * Q16_sin_t) >> 16;
-    int16_t tmp_w1 = (-Q16_SQRT3_2 * Q16_sin_t - Q16_1_2 * Q16_cos_t) >> 16;
-    int16_t tmp_w2 = ( Q16_SQRT3_2 * Q16_cos_t - Q16_1_2 * Q16_sin_t) >> 16;
-
-    V_u = (Q16_cos_t * V_d - Q16_sin_t * V_q) >> 16;
-    V_v = (tmp_v1 * V_d - tmp_v2 * V_q) >> 16;
-    V_w = (tmp_w1 * V_d - tmp_w2 * V_q) >> 16;
-
-    V_u = clip(V_u, -32, 32);
-    V_v = clip(V_u, -32, 32);
-    V_w = clip(V_u, -32, 32);
-
-        *a = cf*d - sf*q;
-        *b = (SQRT3_2*sf-.5f*cf)*d - (-SQRT3_2*cf-.5f*sf)*q;
-        *c = (-SQRT3_2*sf-.5f*cf)*d - (SQRT3_2*cf-.5f*sf)*q;
+    //Convert DQ voltages to phase voltages, avg error around 0.4%
+    int32_t V_u = (Q16_cos_t * V_d - Q16_sin_t * V_q) >> 15;
+    int32_t V_v = ( (Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * V_d + (Q16_SQRT3_2_cos_t + Q16_1_2_sin_t) * V_q) >> 15;
+    int32_t V_w = (-(Q16_SQRT3_2_sin_t + Q16_1_2_cos_t) * V_d - (Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * V_q) >> 15;
 
 
 
-
-    controller->d_int += controller->k_d*controller->ki_d*i_d_error;
-    controller->d_int = fast_fmaxf(fast_fminf(controller->d_int, controller->v_max), -controller->v_max);
+//    controller->d_int += controller->k_d*controller->ki_d*i_d_error;
+//    controller->d_int = fast_fmaxf(fast_fminf(controller->d_int, controller->v_max), -controller->v_max);
 
 
 

@@ -1,5 +1,5 @@
-../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_uart.c:3942:13:UART_TxISR_16BIT	8	static,ignoring_inline_asm
-../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_uart.c:3913:13:UART_TxISR_8BIT	8	static,ignoring_inline_asm
+../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_uart.c:3942:13:UART_TxISR_16BIT	12	static,ignoring_inline_asm
+../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_uart.c:3913:13:UART_TxISR_8BIT	12	static,ignoring_inline_asm
 ../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_uart.c:713:13:HAL_UART_MspInit	0	static
 ../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_uart.c:728:13:HAL_UART_MspDeInit	0	static
 ../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_uart.c:666:19:HAL_UART_DeInit	16	static

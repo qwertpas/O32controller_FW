@@ -1,2 +1,2 @@
-sixstep.c:48:6:sixstep_startup	2
-sixstep.c:112:6:sixstep_loop	19
+../Core/Src/sixstep.c:48:6:sixstep_startup	2
+../Core/Src/sixstep.c:112:6:sixstep_loop	19
