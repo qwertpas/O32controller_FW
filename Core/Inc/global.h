@@ -72,6 +72,10 @@
 #define DISABLE_DRIVE \
 	HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, 0); \
 	HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, 0);
+#define SET_RS485_RX \
+	HAL_GPIO_WritePin(USART_DE_GPIO_Port, USART_DE_Pin, 0);
+#define SET_RS485_TX \
+	HAL_GPIO_WritePin(USART_DE_GPIO_Port, USART_DE_Pin, 1);
 
 
 extern ADC_HandleTypeDef hadc;

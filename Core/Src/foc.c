@@ -95,7 +95,7 @@ void foc_startup() {
 	DISABLE_DRIVE;
 
 	//disable RS485 tranceiver driver
-	HAL_GPIO_WritePin(USART_DE_GPIO_Port, USART_DE_Pin, 0);
+	SET_RS485_RX;
 
 	HAL_ADC_Stop(&hadc); //stop adc before calibration
 	HAL_Delay(1);
@@ -224,34 +224,6 @@ void foc_loop() {
 	I_q_accum = I_q_accum - I_q_filt + I_q;
 
 
-    //Handle i2c commands
-    int cmd = p.i2c_RX[0];
-	if (cmd == 0) {
-//		mag = 0;
-		I_q = 0;
-	} else if (cmd >= 1 && cmd <= 8) {
-
-//		//hold angle with six step
-//		if (cont_angle > 32868) {
-//			step = ((e_angle + 27307) & (32768-1)) / 5461;
-//			mag = (cont_angle - 32868) / 100;
-//		} else if (cont_angle < 32668) {
-//			step = ((e_angle + 10923) & (32768-1)) / 5461;
-//			mag = (32668 - cont_angle) / 100;
-//		} else {
-//			mag = 0;
-//		}
-//		if (mag > cmd * 10) {
-//			mag = cmd * 10;
-//		}
-
-		I_q = cmd * 10;
-
-	} else if (cmd == 9) {
-		step = ((e_angle + 10923) & (32768-1)) / 5461; //six step
-	}
-
-
 
 	I_d_error = I_d_des - I_d;
 	I_q_error = I_q_des - I_q;
@@ -274,43 +246,54 @@ void foc_loop() {
 
 
 
-//    controller->d_int += controller->k_d*controller->ki_d*i_d_error;
-//    controller->d_int = fast_fmaxf(fast_fminf(controller->d_int, controller->v_max), -controller->v_max);
 
+    //Handle i2c commands
+    int cmd = p.i2c_RX[0];
+	if (cmd == 0) {
+//		mag = 0;
+		I_q = 0;
+	} else if (cmd >= 1 && cmd <= 8) {
 
+		I_q = cmd * 10;
 
+	} else if (cmd == 9) {
+		step = ((e_angle + 10923) & (32768-1)) / 5461; //six step
+	}
 
-//	//six-step commutation
-//	if (step == 0) {
-//		TIM1->CCR1 = mag;
-//		TIM1->CCR2 = 0;
-//		TIM1->CCR3 = 0;
-//	}
-//	if (step == 1) {
-//		TIM1->CCR1 = mag;
-//		TIM1->CCR2 = mag;
-//		TIM1->CCR3 = 0;
-//	}
-//	if (step == 2) {
-//		TIM1->CCR1 = 0;
-//		TIM1->CCR2 = mag;
-//		TIM1->CCR3 = 0;
-//	}
-//	if (step == 3) {
-//		TIM1->CCR1 = 0;
-//		TIM1->CCR2 = mag;
-//		TIM1->CCR3 = mag;
-//	}
-//	if (step == 4) {
-//		TIM1->CCR1 = 0;
-//		TIM1->CCR2 = 0;
-//		TIM1->CCR3 = mag;
-//	}
-//	if (step == 5) {
-//		TIM1->CCR1 = mag;
-//		TIM1->CCR2 = 0;
-//		TIM1->CCR3 = mag;
-//	}
+    mag = cmd*10;
+    step = ((e_angle + 27307) & (32768-1)) / 5461;
+
+	//six-step commutation
+	if (step == 0) {
+		TIM1->CCR1 = mag;
+		TIM1->CCR2 = 0;
+		TIM1->CCR3 = 0;
+	}
+	if (step == 1) {
+		TIM1->CCR1 = mag;
+		TIM1->CCR2 = mag;
+		TIM1->CCR3 = 0;
+	}
+	if (step == 2) {
+		TIM1->CCR1 = 0;
+		TIM1->CCR2 = mag;
+		TIM1->CCR3 = 0;
+	}
+	if (step == 3) {
+		TIM1->CCR1 = 0;
+		TIM1->CCR2 = mag;
+		TIM1->CCR3 = mag;
+	}
+	if (step == 4) {
+		TIM1->CCR1 = 0;
+		TIM1->CCR2 = 0;
+		TIM1->CCR3 = mag;
+	}
+	if (step == 5) {
+		TIM1->CCR1 = mag;
+		TIM1->CCR2 = 0;
+		TIM1->CCR3 = mag;
+	}
 
 
 
