@@ -154,7 +154,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSI14CalibrationValue = 16;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL16;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL12;
   RCC_OscInitStruct.PLL.PREDIV = RCC_PREDIV_DIV1;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
@@ -475,7 +475,7 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 47;
+  htim2.Init.Prescaler = 63;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 10000;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -655,10 +655,19 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *I2cHandle) {
 	}
 }
 
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+//	RS485_SET_RX;
+	LED_RED;
+
+
+}
+
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
 //	RS485_SET_RX;
 //	LED_GREEN;
+//	LED_RED;
 
 }
 

@@ -13,8 +13,8 @@
 
 /* Size of Transmission and receive buffer */
 #define I2CSIZE 2
-
 #define UARTSIZE 100
+
 
 /* 6 ADC channels in total:
  * [0] ADC0: Phase V current
@@ -94,8 +94,7 @@ typedef struct {
 	uint8_t i2c_RX[I2CSIZE];
 
 	uint8_t uart_TX[UARTSIZE];
-	uint16_t uart_TX_pos;
-	uint8_t uart_RX[2];
+	uint8_t uart_RX[UARTSIZE];
 
 	/* Buffer for raw ADC readings */
 	uint16_t adc_vals[NBR_ADC];

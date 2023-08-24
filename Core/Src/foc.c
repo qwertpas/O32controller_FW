@@ -78,6 +78,8 @@ static int16_t V_q = 0; //usually 0 unless field weakening
 static uint32_t count = 0; //incremented every loop, reset at 100Hz
 static uint16_t loop_freq = 0; //Hz, calculated at 100Hz using count
 
+static uint8_t cmd = 0;
+
 
 int16_t clip(int16_t x, int16_t min, int16_t max){
     if(x > max){
@@ -153,6 +155,8 @@ void foc_startup() {
 	cont_angle = 0;
 	cont_angle_prev = 0;
 	rpm = 0;
+
+    HAL_UART_Receive_DMA(&huart1, p.uart_RX, 2);
 
 }
 
@@ -246,19 +250,14 @@ void foc_loop() {
 
 
 
-    //Handle i2c commands
-//    int cmd = p.i2c_RX[0];
-    int cmd = p.uart_RX[1];
-//	if (cmd == 0) {
-////		mag = 0;
-//		I_q = 0;
-//	} else if (cmd >= 1 && cmd <= 8) {
-//
-//		I_q = cmd * 10;
-//
-//	} else if (cmd == 9) {
-//		step = ((e_angle + 10923) & (32768-1)) / 5461; //six step
-//	}
+    //Handle uart commands
+    if(p.uart_RX[1] != 0xFF){
+    	LED_GREEN;
+//		cmd = (uint8_t) p.uart_RX[1];
+    }else{
+    	LED_RED;
+    }
+
 
     mag = cmd/2;
     step = ((e_angle + 27307) & (32768-1)) / 5461;
@@ -312,20 +311,25 @@ void foc_loop() {
 		loop_freq = count * 100;
 		count = 0;
 
-//		memset(p.uart_TX, 0, sizeof(p.uart_TX));
 
-//		sprintf((char*) p.uart_TX, " rpm: %d\n RX0: %x\n RX1: %x\n \t", rpm, mag, p.uart_RX[1]);
+
+		memset(p.uart_TX, 0, sizeof(p.uart_TX));
+
+		sprintf((char*) p.uart_TX, " rpm: %ld\n RX0: %d\n RX1: %d\n \t", rpm, p.uart_RX[0], p.uart_RX[1]);
 //		sprintf((char*) p.uart_TX, " freq: %d\n I_d_filt: %d\n I_q_filt: %d\n \t", loop_freq, I_d_filt, I_q_filt);
 //		sprintf((char*) p.uart_TX, " I_u: %d \n I_v: %d \n I_w: %d \n I_d: %d \n I_q: %d \n \t", I_u, I_v, I_w, I_d, I_q);
 //		sprintf((char*) p.uart_TX, " rpm: %ld\n m_angle: %d\n e_angle: %d\n revs: %ld\n cont_angle: %ld\n \t", rpm, m_angle, e_angle, revs, cont_angle);
 
 //		sprintf((char*) p.uart_TX, "Helloo  \r\n\t");
-//		HAL_UART_Transmit_DMA(&huart1, p.uart_TX, UARTSIZE);
+
+		HAL_UART_Transmit_DMA(&huart1, p.uart_TX, UARTSIZE);
 //		RS485_SET_TX;
 //		LED_RED;
-		HAL_UART_Transmit_DMA(&huart1, p.uart_RX, 2);
-	    HAL_UART_Receive_DMA(&huart1, p.uart_RX, 2);
+//		p.uart_TX[0] = 0xAA;
+//		p.uart_TX[1] = 0xBB;
+//		HAL_UART_Transmit_DMA(&huart1, p.uart_RX, 2);
 
+//	    HAL_UART_Receive_DMA(&huart1, p.uart_RX, 2);
 
 //	    HAL_UARTEx_ReceiveToIdle_DMA(&huart1, p.uart_RX, 2);
 //	    __HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
