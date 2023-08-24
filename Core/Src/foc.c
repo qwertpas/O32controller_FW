@@ -332,6 +332,7 @@ void foc_loop() {
 		p.print_flag = 0;
 	}
 	LED_GREEN;
+
 }
 
 //void DMA1_Channel1_IRQHandler(void)
@@ -342,16 +343,20 @@ void foc_loop() {
 
 //void HAL_UART_RxHalfCpltCallback
 
+int rxcount = 0;
 
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) //RX is DMA channel 3
 {
 
     if (huart == &huart1){
-    	LED_RED;
-    			memcpy(p.uart_TX, p.uart_RX, 10);
-    			p.uart_TX[3] = huart->RxXferSize;
-    			HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 10); //DMA channel 4
+    	if(rxcount == 0){
+    		LED_RED;
+			memcpy(p.uart_TX, p.uart_RX, 3);
+			HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 3); //DMA channel 4
+    	}
+
+		rxcount = (rxcount + 1) % 3;
     }
 
 //	if(DMA1->ISR & DMA_ISR_TCIF3){
