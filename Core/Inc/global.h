@@ -72,9 +72,9 @@
 #define DISABLE_DRIVE \
 	HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, 0); \
 	HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, 0);
-#define SET_RS485_RX \
+#define RS485_SET_RX \
 	HAL_GPIO_WritePin(USART_DE_GPIO_Port, USART_DE_Pin, 0);
-#define SET_RS485_TX \
+#define RS485_SET_TX \
 	HAL_GPIO_WritePin(USART_DE_GPIO_Port, USART_DE_Pin, 1);
 
 
@@ -86,6 +86,7 @@ extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim2;
 extern UART_HandleTypeDef huart1;
 extern DMA_HandleTypeDef hdma_usart1_tx;
+extern DMA_HandleTypeDef hdma_usart1_rx;
 
 
 typedef struct {
@@ -94,7 +95,7 @@ typedef struct {
 
 	uint8_t uart_TX[UARTSIZE];
 	uint16_t uart_TX_pos;
-	uint8_t uart_RX[UARTSIZE];
+	uint8_t uart_RX[2];
 
 	/* Buffer for raw ADC readings */
 	uint16_t adc_vals[NBR_ADC];

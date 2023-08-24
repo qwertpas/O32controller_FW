@@ -95,7 +95,7 @@ void foc_startup() {
 	DISABLE_DRIVE;
 
 	//disable RS485 tranceiver driver
-	SET_RS485_RX;
+	RS485_SET_RX;
 
 	HAL_ADC_Stop(&hadc); //stop adc before calibration
 	HAL_Delay(1);
@@ -120,7 +120,6 @@ void foc_startup() {
 	LED_GREEN;
 	HAL_Delay(100);
 
-	HAL_I2C_EnableListen_IT(&hi2c1);
 
 	//get out of standby mode to allow gate drive
 	ENABLE_DRIVE;
@@ -248,19 +247,20 @@ void foc_loop() {
 
 
     //Handle i2c commands
-    int cmd = p.i2c_RX[0];
-	if (cmd == 0) {
-//		mag = 0;
-		I_q = 0;
-	} else if (cmd >= 1 && cmd <= 8) {
+//    int cmd = p.i2c_RX[0];
+    int cmd = p.uart_RX[1];
+//	if (cmd == 0) {
+////		mag = 0;
+//		I_q = 0;
+//	} else if (cmd >= 1 && cmd <= 8) {
+//
+//		I_q = cmd * 10;
+//
+//	} else if (cmd == 9) {
+//		step = ((e_angle + 10923) & (32768-1)) / 5461; //six step
+//	}
 
-		I_q = cmd * 10;
-
-	} else if (cmd == 9) {
-		step = ((e_angle + 10923) & (32768-1)) / 5461; //six step
-	}
-
-    mag = cmd*10;
+    mag = cmd/2;
     step = ((e_angle + 27307) & (32768-1)) / 5461;
 
 	//six-step commutation
@@ -302,28 +302,38 @@ void foc_loop() {
 
 	if (p.print_flag) { //100Hz clock
 
+
+
+
+
 		rpm = ((cont_angle - cont_angle_prev)*100*60) >> 15; //should be accurate within reasonable RPM range if 32-bit
 		cont_angle_prev = cont_angle;
 
 		loop_freq = count * 100;
 		count = 0;
 
-		memset(p.uart_TX, 0, sizeof(p.uart_TX));
+//		memset(p.uart_TX, 0, sizeof(p.uart_TX));
 
-		sprintf((char*) p.uart_TX, " freq: %d\n I_d_filt: %d\n I_q_filt: %d\n \t", loop_freq, I_d_filt, I_q_filt);
+//		sprintf((char*) p.uart_TX, " rpm: %d\n RX0: %x\n RX1: %x\n \t", rpm, mag, p.uart_RX[1]);
+//		sprintf((char*) p.uart_TX, " freq: %d\n I_d_filt: %d\n I_q_filt: %d\n \t", loop_freq, I_d_filt, I_q_filt);
 //		sprintf((char*) p.uart_TX, " I_u: %d \n I_v: %d \n I_w: %d \n I_d: %d \n I_q: %d \n \t", I_u, I_v, I_w, I_d, I_q);
 //		sprintf((char*) p.uart_TX, " rpm: %ld\n m_angle: %d\n e_angle: %d\n revs: %ld\n cont_angle: %ld\n \t", rpm, m_angle, e_angle, revs, cont_angle);
 
 //		sprintf((char*) p.uart_TX, "Helloo  \r\n\t");
-		HAL_UART_Transmit_DMA(&huart1, p.uart_TX, UARTSIZE);
+//		HAL_UART_Transmit_DMA(&huart1, p.uart_TX, UARTSIZE);
+//		RS485_SET_TX;
+//		LED_RED;
+		HAL_UART_Transmit_DMA(&huart1, p.uart_RX, 2);
+	    HAL_UART_Receive_DMA(&huart1, p.uart_RX, 2);
+
+
+//	    HAL_UARTEx_ReceiveToIdle_DMA(&huart1, p.uart_RX, 2);
+//	    __HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
+
+
+
 
 		p.print_flag = 0;
-
-		//restart I2C listener after a transfer
-		if (p.i2c_complete_flag == 1) {
-			HAL_I2C_EnableListen_IT(&hi2c1);
-			p.i2c_complete_flag = 0;
-		}
 	}
 }
 
