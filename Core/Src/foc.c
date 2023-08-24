@@ -156,7 +156,7 @@ void foc_startup() {
 	cont_angle_prev = 0;
 	rpm = 0;
 
-    HAL_UART_Receive_DMA(&huart1, p.uart_RX, 2);
+    HAL_UART_Receive_DMA(&huart1, p.uart_RX, 3);
 
 }
 
@@ -250,16 +250,7 @@ void foc_loop() {
 
 
 
-    //Handle uart commands
-    if(p.uart_RX[1] != 0xFF){
-    	LED_GREEN;
-//		cmd = (uint8_t) p.uart_RX[1];
-    }else{
-    	LED_RED;
-    }
-
-
-    mag = cmd/2;
+    mag = 0;
     step = ((e_angle + 27307) & (32768-1)) / 5461;
 
 	//six-step commutation
@@ -313,16 +304,17 @@ void foc_loop() {
 
 
 
-		memset(p.uart_TX, 0, sizeof(p.uart_TX));
+//		memset(p.uart_TX, 0, sizeof(p.uart_TX));
 
-		sprintf((char*) p.uart_TX, " rpm: %ld\n RX0: %d\n RX1: %d\n \t", rpm, p.uart_RX[0], p.uart_RX[1]);
+//		sprintf((char*) p.uart_TX, "RX0: %X\n RX1: %X\n RX2: %X\n \t", p.uart_RX[0], p.uart_RX[1], p.uart_RX[2]);
 //		sprintf((char*) p.uart_TX, " freq: %d\n I_d_filt: %d\n I_q_filt: %d\n \t", loop_freq, I_d_filt, I_q_filt);
 //		sprintf((char*) p.uart_TX, " I_u: %d \n I_v: %d \n I_w: %d \n I_d: %d \n I_q: %d \n \t", I_u, I_v, I_w, I_d, I_q);
 //		sprintf((char*) p.uart_TX, " rpm: %ld\n m_angle: %d\n e_angle: %d\n revs: %ld\n cont_angle: %ld\n \t", rpm, m_angle, e_angle, revs, cont_angle);
 
 //		sprintf((char*) p.uart_TX, "Helloo  \r\n\t");
 
-		HAL_UART_Transmit_DMA(&huart1, p.uart_TX, UARTSIZE);
+//		HAL_UART_Transmit_DMA(&huart1, p.uart_RX, 10);
+
 //		RS485_SET_TX;
 //		LED_RED;
 //		p.uart_TX[0] = 0xAA;
@@ -339,5 +331,41 @@ void foc_loop() {
 
 		p.print_flag = 0;
 	}
+	LED_GREEN;
 }
 
+//void DMA1_Channel1_IRQHandler(void)
+//{
+//  //Test on DMA1 Channel1 Transfer Complete interrupt
+//
+//}
+
+//void HAL_UART_RxHalfCpltCallback
+
+
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) //RX is DMA channel 3
+{
+
+    if (huart == &huart1){
+    	LED_RED;
+    			memcpy(p.uart_TX, p.uart_RX, 10);
+    			p.uart_TX[3] = huart->RxXferSize;
+    			HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 10); //DMA channel 4
+    }
+
+//	if(DMA1->ISR & DMA_ISR_TCIF3){
+
+//	}
+
+
+
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+//	RS485_SET_RX;
+//	LED_GREEN;
+//	LED_RED;
+
+}

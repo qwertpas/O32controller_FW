@@ -99,6 +99,8 @@ int main(void)
 
   /* USER CODE BEGIN SysInit */
 
+
+
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -655,21 +657,9 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *I2cHandle) {
 	}
 }
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-//	RS485_SET_RX;
-	LED_RED;
 
 
-}
 
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
-{
-//	RS485_SET_RX;
-//	LED_GREEN;
-//	LED_RED;
-
-}
 
 /* USER CODE END 4 */
 
