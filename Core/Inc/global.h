@@ -11,7 +11,7 @@
 #include "stm32f0xx_hal.h"
 
 // 4-bit address
-#define UART_ADDR 3
+#define UART_ADDR 0x3
 
 
 /* Size of Transmission and receive buffer */
@@ -96,8 +96,8 @@ typedef struct {
 	uint8_t i2c_TX[I2CSIZE];
 	uint8_t i2c_RX[I2CSIZE];
 
-	uint8_t uart_TX[7];
-	uint8_t uart_RX[7];
+	uint8_t uart_TX[2];
+	uint8_t uart_RX[2];
 
 	/* Buffer for raw ADC readings */
 	uint16_t adc_vals[NBR_ADC];
@@ -107,6 +107,7 @@ typedef struct {
 
 	uint8_t print_flag;
 	uint8_t i2c_complete_flag;
+	uint8_t uart_flag;
 } PeripherialStruct;
 extern PeripherialStruct p;
 

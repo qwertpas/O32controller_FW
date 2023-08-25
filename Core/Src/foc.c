@@ -126,14 +126,12 @@ void foc_startup() {
 
     HAL_Delay(1000);
 
-    for (int i = 0; i < 10;
-         i++) { // take some measurements to let the sensors settle
+    for (int i = 0; i < 10; i++) { // take some measurements to let the sensors settle
         HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 0);
         HAL_SPI_TransmitReceive(&hspi1, p.spi_TX, p.spi_RX, 2, HAL_MAX_DELAY);
         HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 1);
 
-        HAL_ADC_Start_DMA(&hadc, (uint32_t *)p.adc_vals,
-                          NBR_ADC); // start the adc in dma mode
+        HAL_ADC_Start_DMA(&hadc, (uint32_t *)p.adc_vals, NBR_ADC); // start the adc in dma mode
     }
     // 780.19 angle counts per 1/6th of an electrical cycle
     // 4681.14 angle counts per electrical cycle
@@ -152,7 +150,7 @@ void foc_startup() {
     rpm = 0;
 
     // HAL_UART_Receive_IT(&huart1, p.uart_RX, 3);
-    HAL_UART_Receive_DMA(&huart1, p.uart_RX, 7);
+    HAL_UART_Receive_DMA(&huart1, p.uart_RX, 2);
 }
 
 void foc_loop() {
@@ -284,6 +282,12 @@ void foc_loop() {
     }
 
     count++;
+
+    if (p.uart_flag) {
+        memcpy(p.uart_TX, p.uart_RX, 2);
+        HAL_UART_Transmit_IT(&huart1, p.uart_TX, 2); // DMA channel 4
+        p.uart_flag = 0;
+    }
 
     if (p.print_flag) { // 100Hz clock
 

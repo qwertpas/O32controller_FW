@@ -235,8 +235,7 @@ void USART1_IRQHandler(void) {
     if (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_IDLE)) {
         __HAL_UART_CLEAR_IDLEFLAG(&huart1);
         // LED_RED;
-        memcpy(p.uart_TX, p.uart_RX, 7);
-        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 7); // DMA channel 4
+        p.uart_flag = 1;
     }
 
     /* USER CODE END USART1_IRQn 1 */

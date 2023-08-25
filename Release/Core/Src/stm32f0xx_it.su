@@ -9,4 +9,4 @@
 ../Core/Src/stm32f0xx_it.c:185:6:TIM2_IRQHandler	8	static
 ../Core/Src/stm32f0xx_it.c:198:6:I2C1_IRQHandler	8	static
 ../Core/Src/stm32f0xx_it.c:215:6:SPI1_IRQHandler	8	static
-../Core/Src/stm32f0xx_it.c:228:6:USART1_IRQHandler	16	static
+../Core/Src/stm32f0xx_it.c:228:6:USART1_IRQHandler	8	static
