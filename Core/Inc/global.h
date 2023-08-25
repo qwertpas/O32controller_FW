@@ -93,8 +93,8 @@ typedef struct {
 	uint8_t i2c_TX[I2CSIZE];
 	uint8_t i2c_RX[I2CSIZE];
 
-	uint8_t uart_TX[UARTSIZE];
-	uint8_t uart_RX[3];
+	uint8_t uart_TX[7];
+	uint8_t uart_RX[7];
 
 	/* Buffer for raw ADC readings */
 	uint16_t adc_vals[NBR_ADC];
