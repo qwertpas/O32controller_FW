@@ -1,8 +1,9 @@
 ../Core/Src/main.c:66:5:__io_putchar	1
-../Core/Src/main.c:567:6:HAL_TIM_PeriodElapsedCallback	2
-../Core/Src/main.c:581:6:HAL_I2C_SlaveTxCpltCallback	1
-../Core/Src/main.c:620:6:Error_Handler	1
-../Core/Src/main.c:140:6:SystemClock_Config	3
+../Core/Src/main.c:582:6:HAL_UARTEx_WakeupCallback	1
+../Core/Src/main.c:587:6:HAL_TIM_PeriodElapsedCallback	2
+../Core/Src/main.c:601:6:HAL_I2C_SlaveTxCpltCallback	1
+../Core/Src/main.c:640:6:Error_Handler	1
+../Core/Src/main.c:156:6:SystemClock_Config	3
 ../Core/Src/main.c:82:5:main	24
-../Core/Src/main.c:593:6:HAL_I2C_AddrCallback	2
-../Core/Src/main.c:608:6:HAL_I2C_ErrorCallback	1
+../Core/Src/main.c:613:6:HAL_I2C_AddrCallback	2
+../Core/Src/main.c:628:6:HAL_I2C_ErrorCallback	1

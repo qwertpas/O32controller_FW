@@ -111,6 +111,22 @@ int main(void) {
     MX_TIM2_Init();
     /* USER CODE BEGIN 2 */
 
+    HAL_MultiProcessor_Init(&huart1, UART_ADDR, UART_WAKEUPMETHOD_ADDRESSMARK);
+    HAL_MultiProcessorEx_AddressLength_Set(&huart1, UART_ADDRESS_DETECT_4B);
+
+    HAL_MultiProcessor_EnableMuteMode(&huart1);
+    HAL_MultiProcessor_EnterMuteMode(&huart1);
+
+    // // Enable the mute mode by setting the MME bit in the USART_CR1 register
+    // huart1.Instance->CR1 |= USART_CR1_MME;
+    // // Select the address mark as the wake-up method
+    // huart1.Instance->CR1 |= USART_CR1_WAKE;
+    // // Set the device's address (upper 4 bits)
+    // huart1.Instance->CR2 = (huart1.Instance->CR2 & ~USART_CR2_ADD) | (UART_ADDR << USART_CR2_ADD_Pos);
+
+    // huart1.Instance->CR1 |= USART_CR1_WAKEUPIE;
+
+    DISABLE_DRIVE;
     RS485_SET_RX;
 
     //	sixstep_startup();
@@ -562,6 +578,10 @@ static void MX_GPIO_Init(void) {
 }
 
 /* USER CODE BEGIN 4 */
+
+void HAL_UARTEx_WakeupCallback(UART_HandleTypeDef *huart) {
+    LED_RED;
+}
 
 // Callback whenever a timer rolls over
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {

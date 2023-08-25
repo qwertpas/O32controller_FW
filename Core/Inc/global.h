@@ -10,6 +10,9 @@
 
 #include "stm32f0xx_hal.h"
 
+// 4-bit address
+#define UART_ADDR 3
+
 
 /* Size of Transmission and receive buffer */
 #define I2CSIZE 2
