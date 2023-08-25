@@ -80,6 +80,9 @@ static uint16_t loop_freq = 0; //Hz, calculated at 100Hz using count
 
 static uint8_t cmd = 0;
 
+int rx_complete = 1;
+
+
 
 int16_t clip(int16_t x, int16_t min, int16_t max){
     if(x > max){
@@ -156,9 +159,20 @@ void foc_startup() {
 	cont_angle_prev = 0;
 	rpm = 0;
 
-    HAL_UART_Receive_DMA(&huart1, p.uart_RX, 3);
+//	  HAL_UART_Receive_IT(&huart1, p.uart_RX, 3);
+	  HAL_UART_Receive_DMA(&huart1, p.uart_RX, 3);
+
+
 
 }
+
+
+
+
+
+
+
+
 
 void foc_loop() {
 	//read MA702 magnetic angle
@@ -294,6 +308,8 @@ void foc_loop() {
 
 
 
+//		  HAL_UART_Receive_IT(&huart1, p.uart_RX, 3);
+//		  HAL_UART_Receive_DMA(&huart1, p.uart_RX, 3);
 
 
 		rpm = ((cont_angle - cont_angle_prev)*100*60) >> 15; //should be accurate within reasonable RPM range if 32-bit
@@ -333,30 +349,54 @@ void foc_loop() {
 	}
 	LED_GREEN;
 
+
+
+//	  if(rx_complete){
+//		  memcpy(p.uart_TX, p.uart_RX, 3);
+//		HAL_UART_Transmit_IT(&huart1, p.uart_TX, 3); //DMA channel 4
+//		  HAL_UART_Receive_IT(&huart1, p.uart_RX, 3);
+//		  rx_complete = 0;
+//	  }
+
+//	if(DMA1->ISR & DMA_ISR_TCIF3){
+//		LED_RED;
+//		  memcpy(p.uart_TX, p.uart_RX, 3);
+//		HAL_UART_Transmit_IT(&huart1, p.uart_TX, 3); //DMA channel 4
+//		  HAL_UART_Receive_IT(&huart1, p.uart_RX, 3);
+//		  HAL_UART_Receive_DMA(&huart1, p.uart_RX, 3);
+//	}
+
+
+
 }
 
-//void DMA1_Channel1_IRQHandler(void)
-//{
-//  //Test on DMA1 Channel1 Transfer Complete interrupt
-//
-//}
 
-//void HAL_UART_RxHalfCpltCallback
+//int rxcount = 0;
 
-int rxcount = 0;
 
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) //RX is DMA channel 3
 {
 
-    if (huart == &huart1){
-    	if(rxcount == 0){
-    		LED_RED;
-			memcpy(p.uart_TX, p.uart_RX, 3);
-			HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 3); //DMA channel 4
-    	}
 
-		rxcount = (rxcount + 1) % 3;
+
+//	HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 3); //DMA channel 4
+//	  HAL_UART_Receive_IT(&huart1, p.uart_RX, 3);
+
+    if (huart == &huart1){
+////    	if(rxcount == 0){
+//    	uint32_t errorcode = huart1->ErrorCode;
+
+//    		LED_RED;
+		  memcpy(p.uart_TX, p.uart_RX, 3);
+		HAL_UART_Transmit_IT(&huart1, p.uart_TX, 3); //DMA channel 4
+
+
+//    		rx_complete = 1;
+
+//    	}
+//
+//		rxcount = (rxcount + 1) % 3;
     }
 
 //	if(DMA1->ISR & DMA_ISR_TCIF3){
@@ -367,8 +407,29 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) //RX is DMA channel 3
 
 }
 
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart){
+	LED_RED;
+
+	// // flush the UART, otherwise the DMA won't start with data coming in
+	// USART->CR1 &= ~USART_CR1_RE;        // disable UART rx
+	// while (USART1->ISR & USART_ISR_RXNE_RXFNE) {
+	//     u8 h = USART1->RDR;                 // flush the FIFO
+	//     UNUSED(h);
+	// }
+	// USART1->CR1 |= USART_CR1_RE;            // reenable UART rx
+	// // now race to setup the UART with DMA (as usual)
+	// UART_Start_Receive_DMA(&huart1, p.uart_rx, 3);
+	// // stop errors from aborting the DMA (can't do this in Cube)
+	// __HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_TC);
+
+//	HAL_UART_DeInit(&huart1);
+	HAL_UART_Receive_DMA(&huart1, p.uart_RX, 3);
+}
+
+
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
+
 //	RS485_SET_RX;
 //	LED_GREEN;
 //	LED_RED;

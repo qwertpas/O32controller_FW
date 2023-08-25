@@ -539,7 +539,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     HAL_NVIC_EnableIRQ(USART1_IRQn);
   /* USER CODE BEGIN USART1_MspInit 1 */
 
-    __HAL_DMA_ENABLE_IT(&hdma_usart1_rx, DMA_IT_TC);
+//    __HAL_DMA_ENABLE_IT(&hdma_usart1_rx, DMA_IT_TC);
 
 
   /* USER CODE END USART1_MspInit 1 */
