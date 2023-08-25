@@ -1,4 +1,6 @@
+"./Core/Src/foc.o"
 "./Core/Src/main.o"
+"./Core/Src/sixstep.o"
 "./Core/Src/stm32f0xx_hal_msp.o"
 "./Core/Src/stm32f0xx_it.o"
 "./Core/Src/syscalls.o"

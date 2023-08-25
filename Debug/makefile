@@ -1,6 +1,6 @@
 ################################################################################
 # Automatically-generated file. Do not edit!
-# Toolchain: GNU Tools for STM32 (10.3-2021.10)
+# Toolchain: GNU Tools for STM32 (11.3.rel1)
 ################################################################################
 
 -include ../makefile.init
@@ -60,8 +60,8 @@ all: main-build
 main-build: O32controller_FW.elf secondary-outputs
 
 # Tool invocations
-O32controller_FW.elf O32controller_FW.map: $(OBJS) $(USER_OBJS) /Users/chris/Code/STM32CubeIDE/O32controller_FW/STM32F031C6TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "O32controller_FW.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m0 -T"/Users/chris/Code/STM32CubeIDE/O32controller_FW/STM32F031C6TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="O32controller_FW.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+O32controller_FW.elf O32controller_FW.map: $(OBJS) $(USER_OBJS) /Users/chris/Code/STM32/O32controller_FW/STM32F031C6TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "O32controller_FW.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m0 -T"/Users/chris/Code/STM32/O32controller_FW/STM32F031C6TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="O32controller_FW.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
