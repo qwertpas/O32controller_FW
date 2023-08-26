@@ -1,6 +1,6 @@
 ../Core/Src/foc.c:84:9:clip	3
 ../Core/Src/foc.c:94:6:foc_startup	2
-../Core/Src/foc.c:155:6:foc_loop	19
-../Core/Src/foc.c:308:6:HAL_UART_RxCpltCallback	1
-../Core/Src/foc.c:312:6:HAL_UART_TxCpltCallback	1
-../Core/Src/foc.c:316:6:HAL_UART_ErrorCallback	1
+../Core/Src/foc.c:155:6:foc_loop	21
+../Core/Src/foc.c:311:6:HAL_UART_RxCpltCallback	1
+../Core/Src/foc.c:315:6:HAL_UART_TxCpltCallback	1
+../Core/Src/foc.c:319:6:HAL_UART_ErrorCallback	1

@@ -149,7 +149,7 @@ void foc_startup() {
     cont_angle_prev = 0;
     rpm = 0;
 
-    HAL_UART_Receive_IT(&huart1, p.uart_RX, 2);
+    HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
 }
 
 void foc_loop() {
@@ -279,15 +279,19 @@ void foc_loop() {
     count++;
 
     if (p.uart_idle) {
-        if(p.uart_RX[0] & 0x80){ //check if MSB=1, indicating its a command
-            p.uart_TX[0] = p.uart_RX[0];
-            p.uart_TX[1] = p.uart_RX[1];
-        }else{ //swap order
-            p.uart_TX[0] = p.uart_RX[1];
-            p.uart_TX[1] = p.uart_RX[0];
+
+        for (int i = 0; i < UARTSIZE; i++) { // check which byte has MSB 1 and make it the first
+            if (p.uart_RX[i] & 0x80) {
+                for (int j = 0; j < UARTSIZE; j++) {
+                    p.uart_TX[j] = p.uart_RX[(i + j) % UARTSIZE];
+                }
+                break;
+            }
         }
+
+        // memcpy(p.uart_TX, p.uart_RX, 3);
         RS485_SET_TX;
-        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 2); // DMA channel 4
+        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, UARTSIZE); // DMA channel 4
         p.uart_idle = 0;
     }
 
@@ -304,15 +308,15 @@ void foc_loop() {
     LED_GREEN;
 }
 
-
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) { // gets called before all bits finish
-    HAL_UART_Receive_IT(&huart1, p.uart_RX, 2);
+    HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
 }
 
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) { 
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
     RS485_SET_RX;
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) { // receive overrun error happens once in a while, just restart RX
-    HAL_UART_Receive_IT(&huart1, p.uart_RX, 2);
+    HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
+    LED_RED;
 }
