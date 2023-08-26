@@ -149,8 +149,7 @@ void foc_startup() {
     cont_angle_prev = 0;
     rpm = 0;
 
-    // HAL_UART_Receive_IT(&huart1, p.uart_RX, 3);
-    HAL_UART_Receive_DMA(&huart1, p.uart_RX, 2);
+    HAL_UART_Receive_IT(&huart1, p.uart_RX, 2);
 }
 
 void foc_loop() {
@@ -238,12 +237,8 @@ void foc_loop() {
 
         // Convert DQ voltages to phase voltages, avg error around 0.4%
         int32_t V_u = (Q16_cos_t * V_d - Q16_sin_t * V_q) >> 15;
-        int32_t V_v = ((Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * V_d +
-                       (Q16_SQRT3_2_cos_t + Q16_1_2_sin_t) * V_q) >>
-                      15;
-        int32_t V_w = (-(Q16_SQRT3_2_sin_t + Q16_1_2_cos_t) * V_d -
-                       (Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * V_q) >>
-                      15;
+        int32_t V_v = ((Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * V_d + (Q16_SQRT3_2_cos_t + Q16_1_2_sin_t) * V_q) >> 15;
+        int32_t V_w = (-(Q16_SQRT3_2_sin_t + Q16_1_2_cos_t) * V_d - (Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * V_q) >> 15;
 
         mag = 0;
         step = ((e_angle + 27307) & (32768 - 1)) / 5461;
@@ -283,10 +278,17 @@ void foc_loop() {
 
     count++;
 
-    if (p.uart_flag) {
-        memcpy(p.uart_TX, p.uart_RX, 2);
-        HAL_UART_Transmit_IT(&huart1, p.uart_TX, 2); // DMA channel 4
-        p.uart_flag = 0;
+    if (p.uart_idle) {
+        if(p.uart_RX[0] & 0x80){ //check if MSB=1, indicating its a command
+            p.uart_TX[0] = p.uart_RX[0];
+            p.uart_TX[1] = p.uart_RX[1];
+        }else{ //swap order
+            p.uart_TX[0] = p.uart_RX[1];
+            p.uart_TX[1] = p.uart_RX[0];
+        }
+        RS485_SET_TX;
+        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 2); // DMA channel 4
+        p.uart_idle = 0;
     }
 
     if (p.print_flag) { // 100Hz clock
@@ -303,31 +305,14 @@ void foc_loop() {
 }
 
 
-
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) { // RX is DMA channel 3
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) { // gets called before all bits finish
+    HAL_UART_Receive_IT(&huart1, p.uart_RX, 2);
 }
 
-uint32_t errorcode = 0;
-int errcodelabel = -1;
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) { 
+    RS485_SET_RX;
+}
 
-void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
-    LED_RED;
-
-    errorcode = huart->ErrorCode;
-    if (huart->ErrorCode == HAL_UART_ERROR_PE) {
-        // Handle parity error
-        errcodelabel = 1;
-    } else if (huart->ErrorCode == HAL_UART_ERROR_NE) {
-        // Handle noise error
-        errcodelabel = 2;
-    } else if (huart->ErrorCode == HAL_UART_ERROR_FE) {
-        // Handle frame error
-        errcodelabel = 3;
-    } else if (huart->ErrorCode == HAL_UART_ERROR_ORE) {
-        // Handle overrun error
-        errcodelabel = 4;
-    } else if (huart->ErrorCode == HAL_UART_ERROR_DMA) {
-        // Handle DMA transfer error
-        errcodelabel = 5;
-    }
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) { // receive overrun error happens once in a while, just restart RX
+    HAL_UART_Receive_IT(&huart1, p.uart_RX, 2);
 }

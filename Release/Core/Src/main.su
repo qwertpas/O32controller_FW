@@ -1,9 +1,5 @@
-../Core/Src/main.c:66:5:__io_putchar	16	static
-../Core/Src/main.c:582:6:HAL_UARTEx_WakeupCallback	8	static
-../Core/Src/main.c:587:6:HAL_TIM_PeriodElapsedCallback	0	static
-../Core/Src/main.c:601:6:HAL_I2C_SlaveTxCpltCallback	0	static
-../Core/Src/main.c:640:6:Error_Handler	8	static,ignoring_inline_asm
-../Core/Src/main.c:156:6:SystemClock_Config	88	static
-../Core/Src/main.c:82:5:main	184	static
-../Core/Src/main.c:613:6:HAL_I2C_AddrCallback	8	static
-../Core/Src/main.c:628:6:HAL_I2C_ErrorCallback	8	static
+../Core/Src/main.c:65:5:__io_putchar	16	static
+../Core/Src/main.c:570:6:HAL_TIM_PeriodElapsedCallback	0	static
+../Core/Src/main.c:582:6:Error_Handler	8	static,ignoring_inline_asm
+../Core/Src/main.c:146:6:SystemClock_Config	88	static
+../Core/Src/main.c:81:5:main	184	static

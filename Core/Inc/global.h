@@ -11,13 +11,11 @@
 #include "stm32f0xx_hal.h"
 
 // 4-bit address
-#define UART_ADDR 0x3
-
+#define UART_ADDR 0x2
 
 /* Size of Transmission and receive buffer */
 #define I2CSIZE 2
 #define UARTSIZE 100
-
 
 /* 6 ADC channels in total:
  * [0] ADC0: Phase V current
@@ -26,14 +24,14 @@
  * [3] ADC9: Phase U current
  * [4] TEMP
  * [5] VREF
-*/
+ */
 #define NBR_ADC 6
 
-#define PPAIRS 7 //pole pairs
+#define PPAIRS 7 // pole pairs
 
-//calibration values for temperature sensor and ADC internal refernce. See datasheet section 3.10.2
-#define TS_CAL1 *((uint16_t*)0x1FFFF7B8)
-#define VREFINT_CAL *((uint16_t*)0x1FFFF7BA)
+// calibration values for temperature sensor and ADC internal refernce. See datasheet section 3.10.2
+#define TS_CAL1 *((uint16_t *)0x1FFFF7B8)
+#define VREFINT_CAL *((uint16_t *)0x1FFFF7BA)
 
 #define LED_STATUS_Pin GPIO_PIN_0
 #define LED_STATUS_GPIO_Port GPIOF
@@ -69,17 +67,16 @@
 #define LED_RED HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, 1)
 #define LED_GREEN HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, 0)
 
-#define ENABLE_DRIVE \
-	HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, 1); \
-	HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, 1);
-#define DISABLE_DRIVE \
-	HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, 0); \
-	HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, 0);
+#define ENABLE_DRIVE                              \
+    HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, 1); \
+    HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, 1);
+#define DISABLE_DRIVE                             \
+    HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, 0); \
+    HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, 0);
 #define RS485_SET_RX \
-	HAL_GPIO_WritePin(USART_DE_GPIO_Port, USART_DE_Pin, 0);
+    HAL_GPIO_WritePin(USART_DE_GPIO_Port, USART_DE_Pin, 0);
 #define RS485_SET_TX \
-	HAL_GPIO_WritePin(USART_DE_GPIO_Port, USART_DE_Pin, 1);
-
+    HAL_GPIO_WritePin(USART_DE_GPIO_Port, USART_DE_Pin, 1);
 
 extern ADC_HandleTypeDef hadc;
 extern DMA_HandleTypeDef hdma_adc;
@@ -91,26 +88,23 @@ extern UART_HandleTypeDef huart1;
 extern DMA_HandleTypeDef hdma_usart1_tx;
 extern DMA_HandleTypeDef hdma_usart1_rx;
 
-
 typedef struct {
-	uint8_t i2c_TX[I2CSIZE];
-	uint8_t i2c_RX[I2CSIZE];
+    uint8_t i2c_TX[I2CSIZE];
+    uint8_t i2c_RX[I2CSIZE];
 
-	uint8_t uart_TX[2];
-	uint8_t uart_RX[2];
+    uint8_t uart_TX[5];
+    uint8_t uart_RX[5];
 
-	/* Buffer for raw ADC readings */
-	uint16_t adc_vals[NBR_ADC];
+    /* Buffer for raw ADC readings */
+    uint16_t adc_vals[NBR_ADC];
 
-	uint8_t spi_TX[2];
-	uint8_t spi_RX[2];
+    uint8_t spi_TX[2];
+    uint8_t spi_RX[2];
 
-	uint8_t print_flag;
-	uint8_t i2c_complete_flag;
-	uint8_t uart_flag;
+    uint8_t print_flag;
+    uint8_t i2c_complete_flag;
+    uint8_t uart_idle;
 } PeripherialStruct;
 extern PeripherialStruct p;
-
-
 
 #endif /* INC_GLOBAL_H_ */

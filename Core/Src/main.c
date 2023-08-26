@@ -42,7 +42,6 @@ TIM_HandleTypeDef htim2;
 
 UART_HandleTypeDef huart1;
 DMA_HandleTypeDef hdma_usart1_tx;
-DMA_HandleTypeDef hdma_usart1_rx;
 
 /* USER CODE BEGIN PV */
 
@@ -116,15 +115,6 @@ int main(void) {
 
     HAL_MultiProcessor_EnableMuteMode(&huart1);
     HAL_MultiProcessor_EnterMuteMode(&huart1);
-
-    // // Enable the mute mode by setting the MME bit in the USART_CR1 register
-    // huart1.Instance->CR1 |= USART_CR1_MME;
-    // // Select the address mark as the wake-up method
-    // huart1.Instance->CR1 |= USART_CR1_WAKE;
-    // // Set the device's address (upper 4 bits)
-    // huart1.Instance->CR2 = (huart1.Instance->CR2 & ~USART_CR2_ADD) | (UART_ADDR << USART_CR2_ADD_Pos);
-
-    // huart1.Instance->CR1 |= USART_CR1_WAKEUPIE;
 
     DISABLE_DRIVE;
     RS485_SET_RX;
@@ -524,9 +514,6 @@ static void MX_DMA_Init(void) {
     /* DMA1_Channel1_IRQn interrupt configuration */
     HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
-    /* DMA1_Channel2_3_IRQn interrupt configuration */
-    HAL_NVIC_SetPriority(DMA1_Channel2_3_IRQn, 0, 0);
-    HAL_NVIC_EnableIRQ(DMA1_Channel2_3_IRQn);
     /* DMA1_Channel4_5_IRQn interrupt configuration */
     HAL_NVIC_SetPriority(DMA1_Channel4_5_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(DMA1_Channel4_5_IRQn);
@@ -579,55 +566,10 @@ static void MX_GPIO_Init(void) {
 
 /* USER CODE BEGIN 4 */
 
-void HAL_UARTEx_WakeupCallback(UART_HandleTypeDef *huart) {
-    LED_RED;
-}
-
 // Callback whenever a timer rolls over
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     if (htim == &htim2) { // 100Hz
         p.print_flag = 1;
-    }
-}
-
-/**
- * @brief  Tx Transfer completed callback.
- * @param  I2cHandle: I2C handle.
- * @note   This example shows a simple way to report end of IT Tx transfer, and
- *         you can add your own implementation.
- * @retval None
- */
-
-void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *I2cHandle) {
-    p.i2c_complete_flag = 1;
-}
-
-/**
- * @brief  Slave Address Match callback.
- * @param  hi2c Pointer to a I2C_HandleTypeDef structure that contains
- *                the configuration information for the specified I2C.
- * @param  TransferDirection: Master request Transfer Direction (Write/Read), value of @ref I2C_XferOptions_definition
- * @param  AddrMatchCode: Address Match Code
- * @retval None
- */
-void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode) {
-    HAL_StatusTypeDef status;
-
-    if (TransferDirection != 0) {
-        status = HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, (uint8_t *)p.i2c_TX, I2CSIZE, I2C_FIRST_AND_LAST_FRAME);
-    } else {
-        status = HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, (uint8_t *)p.i2c_RX, I2CSIZE, I2C_FIRST_AND_LAST_FRAME);
-        p.i2c_TX[0] = p.i2c_RX[0] + 1;
-        p.i2c_TX[1] = p.i2c_RX[1] + 1;
-    }
-    if (status != HAL_OK) {
-        Error_Handler();
-    }
-}
-
-void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *I2cHandle) {
-    if (HAL_I2C_GetError(I2cHandle) != HAL_I2C_ERROR_AF) {
-        Error_Handler();
     }
 }
 
