@@ -304,7 +304,9 @@ void foc_loop() {
         
         p.uart_TX[0] = (uint8_t) p.uart_cmd[0];
         p.uart_TX[1] = (uint8_t) reverse;
-        p.uart_TX[2] = (uint8_t) mag;
+        p.uart_TX[2] = (uint8_t) (mag >> 6);
+
+        // memcpy(p.uart_TX, p.uart_RX, 3);
         
 
         RS485_SET_TX;
