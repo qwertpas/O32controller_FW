@@ -92,8 +92,9 @@ typedef struct {
     uint8_t i2c_TX[I2CSIZE];
     uint8_t i2c_RX[I2CSIZE];
 
-    uint8_t uart_TX[UARTSIZE];
-    uint8_t uart_RX[UARTSIZE];
+    uint8_t uart_TX[UARTSIZE]; // send to Teensy
+    uint8_t uart_RX[UARTSIZE]; // receive from Teensy (may be out of order)
+    int16_t uart_cmd[UARTSIZE]; //first byte is command, rest is data packed into 16 bits
 
     /* Buffer for raw ADC readings */
     uint16_t adc_vals[NBR_ADC];

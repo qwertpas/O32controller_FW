@@ -6,6 +6,7 @@
  */
 
 #include "foc.h"
+#include "comdef.h"
 
 #define ADC_PER_VOLT 1241 // 4095/3.3
 #define UAMP_PER_ADC 52351
@@ -24,8 +25,11 @@
 #define KI_q 0
 #define KF_q 0
 
-static uint8_t step;
+static uint8_t reverse;
 static uint16_t mag;
+
+static uint8_t step;
+static uint8_t duty_cycle;
 
 static uint16_t m_angle;
 static uint16_t m_angle_prev;
@@ -76,10 +80,6 @@ static int16_t V_q = 0; // usually 0 unless field weakening
 
 static uint32_t count = 0;     // incremented every loop, reset at 100Hz
 static uint16_t loop_freq = 0; // Hz, calculated at 100Hz using count
-
-static uint8_t cmd = 0;
-
-int rx_complete = 1;
 
 int16_t clip(int16_t x, int16_t min, int16_t max) {
     if (x > max) {
@@ -154,7 +154,9 @@ void foc_startup() {
 
 void foc_loop() {
 
-    // to collapse all the control code
+    count++;
+
+    // to collapse FOC calcs
     {
         // read MA702 magnetic angle
         HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 0);
@@ -178,8 +180,7 @@ void foc_loop() {
         // read ADCs
         HAL_ADC_Start_DMA(&hadc, (uint32_t *)p.adc_vals, NBR_ADC);
 
-        // filter ADC values
-        // (https://stackoverflow.com/questions/38918530/simple-low-pass-filter-in-fixed-point)
+        // filter ADC values (https://stackoverflow.com/questions/38918530/simple-low-pass-filter-in-fixed-point)
         // phase currents are in adc units [-2048, 2047] (1 bit sign, 11 bit value)
         // to get current in milliamps, multiply by UAMP_PER_ADC then divide by 1000
         I_u = I_u_accum >> ADC_FILT_LVL;
@@ -192,11 +193,9 @@ void foc_loop() {
         I_w_accum = I_w_accum - I_w + (p.adc_vals[1] - adc_W_offset);
 
         // Convert phase currents to DQ currents (DQ0 transform):
-        uint8_t angle_lut =
-            e_angle >> 7; // scale e_angle [0,32767] to [0,255] for lookup table
+        uint8_t angle_lut = e_angle >> 7; // scale e_angle [0,32767] to [0,255] for lookup table
 
-        // each term below has 15 fractional bits and is signed, floating point
-        // equilvalent < 1
+        // each term below has 15 fractional bits and is signed, floating point equilvalent < 1
         int16_t Q16_sin_t = sin_lut[angle_lut];
         int16_t Q16_cos_t;
         if (angle_lut < 64) {
@@ -239,57 +238,75 @@ void foc_loop() {
         int32_t V_u = (Q16_cos_t * V_d - Q16_sin_t * V_q) >> 15;
         int32_t V_v = ((Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * V_d + (Q16_SQRT3_2_cos_t + Q16_1_2_sin_t) * V_q) >> 15;
         int32_t V_w = (-(Q16_SQRT3_2_sin_t + Q16_1_2_cos_t) * V_d - (Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * V_q) >> 15;
-
-        mag = 0;
-        step = ((e_angle + 27307) & (32768 - 1)) / 5461;
-
-        // six-step commutation
-        if (step == 0) {
-            TIM1->CCR1 = mag;
-            TIM1->CCR2 = 0;
-            TIM1->CCR3 = 0;
-        }
-        if (step == 1) {
-            TIM1->CCR1 = mag;
-            TIM1->CCR2 = mag;
-            TIM1->CCR3 = 0;
-        }
-        if (step == 2) {
-            TIM1->CCR1 = 0;
-            TIM1->CCR2 = mag;
-            TIM1->CCR3 = 0;
-        }
-        if (step == 3) {
-            TIM1->CCR1 = 0;
-            TIM1->CCR2 = mag;
-            TIM1->CCR3 = mag;
-        }
-        if (step == 4) {
-            TIM1->CCR1 = 0;
-            TIM1->CCR2 = 0;
-            TIM1->CCR3 = mag;
-        }
-        if (step == 5) {
-            TIM1->CCR1 = mag;
-            TIM1->CCR2 = 0;
-            TIM1->CCR3 = mag;
-        }
     }
 
-    count++;
+    if (!reverse) {
+        step = ((e_angle + 27307) & (32768 - 1)) / 5461; // divide 16 bit angle into sextants
+    } else {
+        step = ((e_angle + 10923) & (32768 - 1)) / 5461;
+    }
+
+    // six-step commutation
+    if (step == 0) {
+        TIM1->CCR1 = duty_cycle;
+        TIM1->CCR2 = 0;
+        TIM1->CCR3 = 0;
+    }
+    if (step == 1) {
+        TIM1->CCR1 = duty_cycle;
+        TIM1->CCR2 = duty_cycle;
+        TIM1->CCR3 = 0;
+    }
+    if (step == 2) {
+        TIM1->CCR1 = 0;
+        TIM1->CCR2 = duty_cycle;
+        TIM1->CCR3 = 0;
+    }
+    if (step == 3) {
+        TIM1->CCR1 = 0;
+        TIM1->CCR2 = duty_cycle;
+        TIM1->CCR3 = duty_cycle;
+    }
+    if (step == 4) {
+        TIM1->CCR1 = 0;
+        TIM1->CCR2 = 0;
+        TIM1->CCR3 = duty_cycle;
+    }
+    if (step == 5) {
+        TIM1->CCR1 = duty_cycle;
+        TIM1->CCR2 = 0;
+        TIM1->CCR3 = duty_cycle;
+    }
 
     if (p.uart_idle) {
 
-        for (int i = 0; i < UARTSIZE; i++) { // check which byte has MSB 1 and make it the first
-            if (p.uart_RX[i] & 0x80) {
-                for (int j = 0; j < UARTSIZE; j++) {
-                    p.uart_TX[j] = p.uart_RX[(i + j) % UARTSIZE];
-                }
-                break;
-            }
+        // check which of 3 bytes is the cmd and concat 14 data bytes into int16_t (signed)
+        if (p.uart_RX[0] & 0x80) {
+            p.uart_cmd[0] = p.uart_RX[0] & CMD_MASK;
+            p.uart_cmd[1] = (p.uart_RX[1] << 7) | (p.uart_RX[2]);
+        } else if (p.uart_RX[1] & 0x80) {
+            p.uart_cmd[0] = p.uart_RX[1] & CMD_MASK;
+            p.uart_cmd[1] = (p.uart_RX[2] << 7) | (p.uart_RX[0]);
+        } else {
+            p.uart_cmd[0] = p.uart_RX[2] & CMD_MASK;
+            p.uart_cmd[1] = (p.uart_RX[0] << 7) | (p.uart_RX[1]);
         }
 
-        // memcpy(p.uart_TX, p.uart_RX, 3);
+        // If negative, take the absolute value assuming two's complement
+        reverse = (p.uart_cmd[1] >> 13) & 1;
+        mag = reverse ? (~p.uart_cmd[1]) + 1 : p.uart_cmd[1];
+
+        if (p.uart_cmd[0] == CMD_SET_VOLTAGE) {
+            duty_cycle = mag >> 6;
+        } else if (p.uart_cmd[0] == CMD_SET_SPEED) {
+            // implement later
+        }
+        
+        p.uart_TX[0] = (uint8_t) p.uart_cmd[0];
+        p.uart_TX[1] = (uint8_t) reverse;
+        p.uart_TX[2] = (uint8_t) mag;
+        
+
         RS485_SET_TX;
         HAL_UART_Transmit_DMA(&huart1, p.uart_TX, UARTSIZE); // DMA channel 4
         p.uart_idle = 0;
