@@ -241,10 +241,19 @@ void foc_loop() {
     }
 
     if (!reverse) {
-        step = ((e_angle + 27307) & (32768 - 1)) / 5461; // divide 16 bit angle into sextants
+	   step = ((-e_angle + 27307) & (32768 - 1)) / 5461; // divide 16 bit angle into sextants
     } else {
-        step = ((e_angle + 10923) & (32768 - 1)) / 5461;
+        step = ((-e_angle + 10923) & (32768 - 1)) / 5461;
     }
+
+    // step = ((32768 - e_angle + 27307 + 0) & (32768 - 1)) / 5462; // divide 16 bit angle into sextants
+
+
+    // step = 0;
+//     if(count % 5000 == 0){
+//         step = (step + 1) % 6;
+//     }
+//       duty_cycle = 10;
 
     // six-step commutation
     if (step == 0) {
@@ -302,15 +311,13 @@ void foc_loop() {
             // implement later
         }
         
-        p.uart_TX[0] = (uint8_t) p.uart_cmd[0];
-        p.uart_TX[1] = (uint8_t) reverse;
-        p.uart_TX[2] = (uint8_t) (mag >> 6);
 
-        // memcpy(p.uart_TX, p.uart_RX, 3);
-        
+        p.uart_TX[0] = (uint8_t)(rpm >> 7) & 0b01111111;
+        p.uart_TX[1] = (uint8_t)(rpm) & 0b01111111;
+        // p.uart_TX[2] = (uint8_t) (0);
 
         RS485_SET_TX;
-        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, UARTSIZE); // DMA channel 4
+        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 2); // DMA channel 4
         p.uart_idle = 0;
     }
 
@@ -320,7 +327,11 @@ void foc_loop() {
         cont_angle_prev = cont_angle;
 
         loop_freq = count * 100;
-        count = 0;
+//        count = 0;
+
+        // uint8_t print_TX[50];
+		// sprintf((char*) print_TX, " freq: %d\n I_d_filt: %d\n I_q_filt: %d\n \t", loop_freq, I_d_filt, I_q_filt);
+        // HAL_UART_Transmit_DMA(&huart1, print_TX, 50);
 
         p.print_flag = 0;
     }
