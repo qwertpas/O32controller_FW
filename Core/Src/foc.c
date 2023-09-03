@@ -81,6 +81,8 @@ static int16_t V_q = 0; // usually 0 unless field weakening
 static uint32_t count = 0;     // incremented every loop, reset at 100Hz
 static uint16_t loop_freq = 0; // Hz, calculated at 100Hz using count
 
+static uint8_t uart_watchdog = 0;
+
 int16_t clip(int16_t x, int16_t min, int16_t max) {
     if (x > max) {
         return max;
@@ -149,7 +151,8 @@ void foc_startup() {
     cont_angle_prev = 0;
     rpm = 0;
 
-    HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
+     HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
+//    HAL_UART_Receive_DMA(&huart1, p.uart_RX, UARTSIZE);
 }
 
 void foc_loop() {
@@ -246,14 +249,14 @@ void foc_loop() {
         step = ((-e_angle + 10923) & (32768 - 1)) / 5461;
     }
 
-    // step = ((32768 - e_angle + 27307 + 0) & (32768 - 1)) / 5462; // divide 16 bit angle into sextants
+//     step = ((32768 - e_angle + 27307 + 0) & (32768 - 1)) / 5462; // divide 16 bit angle into sextants
 
 
     // step = 0;
 //     if(count % 5000 == 0){
 //         step = (step + 1) % 6;
 //     }
-//       duty_cycle = 10;
+//       duty_cycle = 20;
 
     // six-step commutation
     if (step == 0) {
@@ -317,7 +320,8 @@ void foc_loop() {
         // p.uart_TX[2] = (uint8_t) (0);
 
         RS485_SET_TX;
-        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 2); // DMA channel 4
+        HAL_UART_Transmit_DMA(&huart1, p.uart_RX, 2); // DMA channel 4
+//        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 2); // DMA channel 4
         p.uart_idle = 0;
     }
 
@@ -329,6 +333,13 @@ void foc_loop() {
         loop_freq = count * 100;
 //        count = 0;
 
+        uart_watchdog++;
+        if(uart_watchdog > 5){
+            uart_watchdog = 5;
+            duty_cycle = 0;
+        }
+
+
         // uint8_t print_TX[50];
 		// sprintf((char*) print_TX, " freq: %d\n I_d_filt: %d\n I_q_filt: %d\n \t", loop_freq, I_d_filt, I_q_filt);
         // HAL_UART_Transmit_DMA(&huart1, print_TX, 50);
@@ -339,7 +350,9 @@ void foc_loop() {
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) { // gets called before all bits finish
+    RS485_SET_RX;
     HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
+    uart_watchdog = 0;
 }
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
@@ -347,6 +360,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) { // receive overrun error happens once in a while, just restart RX
+    RS485_SET_RX;
     HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
     LED_RED;
 }
