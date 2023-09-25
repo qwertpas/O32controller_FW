@@ -41,6 +41,8 @@ static int32_t rpm;
 static uint16_t e_offset;
 static uint16_t e_angle;
 
+static uint16_t m_angle_des;
+
 // How much the adc values are off at no current, offset by 2048 to center zero
 // current at 0
 static int16_t adc_U_offset = 2048 + 3;
@@ -243,20 +245,20 @@ void foc_loop() {
         int32_t V_w = (-(Q16_SQRT3_2_sin_t + Q16_1_2_cos_t) * V_d - (Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * V_q) >> 15;
     }
 
-    if (!reverse) {
-	   step = ((-e_angle + 27307) & (32768 - 1)) / 5461; // divide 16 bit angle into sextants
-    } else {
-        step = ((-e_angle + 10923) & (32768 - 1)) / 5461;
+    if(INVERT_MAG){
+    	e_angle *= -1;
     }
 
-//     step = ((32768 - e_angle + 27307 + 0) & (32768 - 1)) / 5462; // divide 16 bit angle into sextants
+    if (!reverse) {
+	   step = ((e_angle + 27307) & (32768 - 1)) / 5461; // divide 16 bit angle into sextants
+    } else {
+        step = ((e_angle + 10923) & (32768 - 1)) / 5461;
+    }
 
-
-    // step = 0;
-//     if(count % 5000 == 0){
+//     if(count % 500 == 0){
 //         step = (step + 1) % 6;
 //     }
-//       duty_cycle = 20;
+//       duty_cycle = 0;
 
     // six-step commutation
     if (step == 0) {
@@ -291,6 +293,8 @@ void foc_loop() {
     }
 
     if (p.uart_idle) {
+		RS485_SET_TX;
+
 
         // check which of 3 bytes is the cmd and concat 14 data bytes into int16_t (signed)
         if (p.uart_RX[0] & 0x80) {
@@ -312,16 +316,25 @@ void foc_loop() {
             duty_cycle = mag >> 6;
         } else if (p.uart_cmd[0] == CMD_SET_SPEED) {
             // implement later
+        } else if (p.uart_cmd[0] == CMD_SET_POSITION) {
+            m_angle_des = p.uart
         }
         
 
-        p.uart_TX[0] = (uint8_t)(rpm >> 7) & 0b01111111;
-        p.uart_TX[1] = (uint8_t)(rpm) & 0b01111111;
+//        p.uart_TX[0] = (uint8_t)(rpm >> 7) & 0b01111111;
+//        p.uart_TX[1] = (uint8_t)(rpm) & 0b01111111;
+
+        p.uart_TX[0] = 0;
+        p.uart_TX[1] = 0;
+        p.uart_TX[2] = (uint8_t)(m_angle >> 7) & 0b01111111;
+		p.uart_TX[3] = (uint8_t)(m_angle) & 0b01111111;
         // p.uart_TX[2] = (uint8_t) (0);
 
-        RS485_SET_TX;
-        HAL_UART_Transmit_DMA(&huart1, p.uart_RX, 2); // DMA channel 4
-//        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 2); // DMA channel 4
+
+        // uint8_t print_TX[20];
+        // sprintf((char*) print_TX, "m: %d \n\t", m_angle);
+
+        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 4); // DMA channel 4
         p.uart_idle = 0;
     }
 
@@ -340,9 +353,11 @@ void foc_loop() {
         }
 
 
-        // uint8_t print_TX[50];
-		// sprintf((char*) print_TX, " freq: %d\n I_d_filt: %d\n I_q_filt: %d\n \t", loop_freq, I_d_filt, I_q_filt);
-        // HAL_UART_Transmit_DMA(&huart1, print_TX, 50);
+//         uint8_t print_TX[50];
+//		 sprintf((char*) print_TX, " freq: %d\n I_d_filt: %d\n I_q_filt: %d\n \t", loop_freq, I_d_filt, I_q_filt);
+//		 sprintf((char*) print_TX, "m_angle: %d \n\t", m_angle);
+//		 RS485_SET_TX;
+//         HAL_UART_Transmit_DMA(&huart1, print_TX, 20);
 
         p.print_flag = 0;
     }
@@ -350,13 +365,13 @@ void foc_loop() {
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) { // gets called before all bits finish
-    RS485_SET_RX;
-    HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
     uart_watchdog = 0;
 }
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
     RS485_SET_RX;
+    HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
+
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) { // receive overrun error happens once in a while, just restart RX
