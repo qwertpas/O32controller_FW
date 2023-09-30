@@ -12,8 +12,16 @@
 
 // 4-bit address
 #define UART_ADDR 0x2
-#define INVERT_MAG 0
-//invert for green motor, no reverse for red
+
+// Motor parameters
+#define PPAIRS 7        // pole pairs
+#define INVERT_MAG 0    //invert=0 for red motor, invert=1 for green motor
+#define POS_KP 10
+#define POS_THRES 10
+
+#define MAX_INT32 0x7FFFFFFF
+#define MIN_INT32 0x80000000 //used as the end char
+#define MIN_INT8 0x80 //used as the end char
 
 /* Size of Transmission and receive buffer */
 #define I2CSIZE 2
@@ -28,8 +36,6 @@
  * [5] VREF
  */
 #define NBR_ADC 6
-
-#define PPAIRS 7 // pole pairs
 
 // calibration values for temperature sensor and ADC internal refernce. See datasheet section 3.10.2
 #define TS_CAL1 *((uint16_t *)0x1FFFF7B8)

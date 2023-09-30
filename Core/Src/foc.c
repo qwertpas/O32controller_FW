@@ -11,7 +11,7 @@
 #define ADC_PER_VOLT 1241 // 4095/3.3
 #define UAMP_PER_ADC 52351
 
-#define ADC_FILT_LVL 0
+#define ADC_FILT_LVL 4
 #define DQ_FILT_LVL 8
 
 #define Q16_2_3 ((uint16_t)43691)     // (2/3) * 2^16
@@ -25,23 +25,24 @@
 #define KI_q 0
 #define KF_q 0
 
-static uint8_t reverse;
-static uint16_t mag;
+static uint8_t reverse = 0;
+static uint16_t mag = 0;
 
-static uint8_t step;
-static uint8_t duty_cycle;
+static uint8_t step = 0;
+static uint8_t duty_cycle = 0;
 
-static uint16_t m_angle;
-static uint16_t m_angle_prev;
-static int32_t revs;
-static int32_t cont_angle;
-static int32_t cont_angle_prev;
-static int32_t rpm;
+static uint16_t m_angle = 0;
+static uint16_t m_angle_prev = 0;
+static int32_t revs = 0;
+static int32_t cont_angle = 0;
+static int32_t cont_angle_prev = 0;
+static int32_t rpm = 0;
 
-static uint16_t e_offset;
-static uint16_t e_angle;
+static uint16_t e_offset = 0;
+static uint16_t e_angle = 0;
 
-static uint16_t m_angle_des;
+static uint16_t I_max = 0;
+static int32_t cont_angle_des = MIN_INT32; //min means no position tracking
 
 // How much the adc values are off at no current, offset by 2048 to center zero
 // current at 0
@@ -53,6 +54,7 @@ static int16_t adc_W_offset = 2048 + -4;
 static int16_t I_u = 0;
 static int16_t I_v = 0;
 static int16_t I_w = 0;
+static int16_t I_phase = 0; //max phase current
 
 // used for filtering
 static int32_t I_u_accum = 0;
@@ -93,6 +95,20 @@ int16_t clip(int16_t x, int16_t min, int16_t max) {
     } else {
         return x;
     }
+}
+
+int16_t abs16(int16_t val) {
+    if(val < 0) return -val;
+    else return val;
+}
+
+int32_t abs32(int32_t val) {
+    if(val < 0) return -val;
+    else return val;
+}
+
+int16_t pad14(int32_t val) {
+    return (val & 0x2000) ? (val | 0xC000) : val;
 }
 
 void foc_startup() {
@@ -137,24 +153,18 @@ void foc_startup() {
 
         HAL_ADC_Start_DMA(&hadc, (uint32_t *)p.adc_vals, NBR_ADC); // start the adc in dma mode
     }
-    // 780.19 angle counts per 1/6th of an electrical cycle
-    // 4681.14 angle counts per electrical cycle
-    // 90º out of phase would be 1/4th of an electrical cycle, so 1170.285 angle counts
+
+    // stop motor
+    TIM1->CCR1 = 0;
+    TIM1->CCR2 = 0;
+    TIM1->CCR3 = 0;
+
     m_angle = (uint16_t)((p.spi_RX[0] << 8) + p.spi_RX[1] + 16384); // 0 to 32767
-    e_offset = (m_angle * PPAIRS - e_offset) & (32768 - 1);         // convert to electrical angle, modulo 32768
-    e_angle = 0;
-
-    step = 0;
-    mag = 20;
-
     m_angle_prev = m_angle;
-    revs = 0;
-    cont_angle = 0;
-    cont_angle_prev = 0;
-    rpm = 0;
+    e_offset = (m_angle * PPAIRS - e_offset) & (32768 - 1);         // convert to electrical angle, modulo 32768
 
-     HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
-//    HAL_UART_Receive_DMA(&huart1, p.uart_RX, UARTSIZE);
+    HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
+    //    HAL_UART_Receive_DMA(&huart1, p.uart_RX, UARTSIZE);
 }
 
 void foc_loop() {
@@ -170,8 +180,7 @@ void foc_loop() {
 
         // angles represented in [0,32767] (~91 per degree)
         m_angle = ((uint16_t)(p.spi_RX[0]) << 8) + p.spi_RX[1] + 16384;
-        e_angle = (m_angle * PPAIRS - e_offset) &
-                  (32768 - 1); // convert to electrical angle and modulo
+        e_angle = (m_angle * PPAIRS - e_offset) & (32768 - 1); // convert to electrical angle and modulo
 
         if (m_angle_prev < 8192 &&
             m_angle > 24576) { // detect angle wraparound and increment a revolution
@@ -197,6 +206,10 @@ void foc_loop() {
         I_w = I_w_accum >> ADC_FILT_LVL;
         I_w_accum = I_w_accum - I_w + (p.adc_vals[1] - adc_W_offset);
 
+        I_phase = abs16(I_u);
+        if(abs16(I_v) > I_phase) I_phase = abs16(I_v);
+        if(abs16(I_w) > I_phase) I_phase = abs16(I_w);
+        
         // Convert phase currents to DQ currents (DQ0 transform):
         uint8_t angle_lut = e_angle >> 7; // scale e_angle [0,32767] to [0,255] for lookup table
 
@@ -233,7 +246,7 @@ void foc_loop() {
         I_q_error_int = clip(I_q_error_int + I_q_error, -32, 32);
 
         // PI+feedforward control loop
-        // Voltage is scaled to [-32768,32767]
+        // Voltage is scaled to [-32768, 32767]
         V_d = KP_d * I_d_error + KI_d * I_d_error_int + KF_d * I_d_des;
         V_q = KP_q * I_q_error + KI_q * I_q_error_int + KF_q * I_q_des;
         V_d = clip(V_d, -32, 32);
@@ -245,56 +258,69 @@ void foc_loop() {
         int32_t V_w = (-(Q16_SQRT3_2_sin_t + Q16_1_2_cos_t) * V_d - (Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * V_q) >> 15;
     }
 
-    if(INVERT_MAG){
-    	e_angle *= -1;
+    
+    if(cont_angle_des != MIN_INT32){
+        //tracking position
+        int32_t cont_angle_error = cont_angle_des - cont_angle;
+
+        reverse = (cont_angle_error > 0) ? 0 : 1;
+
+        duty_cycle = abs32(cont_angle_error) >> 6;
+        // reverse = (cont_angle_des > cont_angle) ? 1 : 0;
+
+        // duty_cycle = 20;
+        duty_cycle = clip(duty_cycle, 0, 60); //duty_cycle in [0, 511]
     }
 
-    if (!reverse) {
-	   step = ((e_angle + 27307) & (32768 - 1)) / 5461; // divide 16 bit angle into sextants
-    } else {
-        step = ((e_angle + 10923) & (32768 - 1)) / 5461;
-    }
+    // mag = 10;
+    // if(I_phase > I_max)
 
-//     if(count % 500 == 0){
-//         step = (step + 1) % 6;
-//     }
-//       duty_cycle = 0;
 
-    // six-step commutation
-    if (step == 0) {
-        TIM1->CCR1 = duty_cycle;
-        TIM1->CCR2 = 0;
-        TIM1->CCR3 = 0;
-    }
-    if (step == 1) {
-        TIM1->CCR1 = duty_cycle;
-        TIM1->CCR2 = duty_cycle;
-        TIM1->CCR3 = 0;
-    }
-    if (step == 2) {
-        TIM1->CCR1 = 0;
-        TIM1->CCR2 = duty_cycle;
-        TIM1->CCR3 = 0;
-    }
-    if (step == 3) {
-        TIM1->CCR1 = 0;
-        TIM1->CCR2 = duty_cycle;
-        TIM1->CCR3 = duty_cycle;
-    }
-    if (step == 4) {
-        TIM1->CCR1 = 0;
-        TIM1->CCR2 = 0;
-        TIM1->CCR3 = duty_cycle;
-    }
-    if (step == 5) {
-        TIM1->CCR1 = duty_cycle;
-        TIM1->CCR2 = 0;
-        TIM1->CCR3 = duty_cycle;
+
+    // six-step commutation using e_angle, reverse, duty_cycle
+    {
+        // calculate step from e_angle
+        if (INVERT_MAG) e_angle *= -1;
+        if (reverse) {
+            step = ((e_angle + 27307) & (32768 - 1)) / 5461; // divide 16 bit angle into sextants
+        } else {
+            step = ((e_angle + 10923) & (32768 - 1)) / 5461;
+        }
+
+        //apply duty_cycle to phases according to step
+        if (step == 0) {
+            TIM1->CCR1 = duty_cycle;
+            TIM1->CCR2 = 0;
+            TIM1->CCR3 = 0;
+        }
+        if (step == 1) {
+            TIM1->CCR1 = duty_cycle;
+            TIM1->CCR2 = duty_cycle;
+            TIM1->CCR3 = 0;
+        }
+        if (step == 2) {
+            TIM1->CCR1 = 0;
+            TIM1->CCR2 = duty_cycle;
+            TIM1->CCR3 = 0;
+        }
+        if (step == 3) {
+            TIM1->CCR1 = 0;
+            TIM1->CCR2 = duty_cycle;
+            TIM1->CCR3 = duty_cycle;
+        }
+        if (step == 4) {
+            TIM1->CCR1 = 0;
+            TIM1->CCR2 = 0;
+            TIM1->CCR3 = duty_cycle;
+        }
+        if (step == 5) {
+            TIM1->CCR1 = duty_cycle;
+            TIM1->CCR2 = 0;
+            TIM1->CCR3 = duty_cycle;
+        }
     }
 
     if (p.uart_idle) {
-		RS485_SET_TX;
-
 
         // check which of 3 bytes is the cmd and concat 14 data bytes into int16_t (signed)
         if (p.uart_RX[0] & 0x80) {
@@ -307,34 +333,39 @@ void foc_loop() {
             p.uart_cmd[0] = p.uart_RX[2] & CMD_MASK;
             p.uart_cmd[1] = (p.uart_RX[0] << 7) | (p.uart_RX[1]);
         }
-
-        // If negative, take the absolute value assuming two's complement
-        reverse = (p.uart_cmd[1] >> 13) & 1;
-        mag = reverse ? (~p.uart_cmd[1]) + 1 : p.uart_cmd[1];
+        p.uart_cmd[1] = pad14(p.uart_cmd[1]);
 
         if (p.uart_cmd[0] == CMD_SET_VOLTAGE) {
+            reverse = (p.uart_cmd[1] >> 13) & 1;
+            mag = reverse ? (~p.uart_cmd[1]) + 1 : p.uart_cmd[1]; // If negative, take the absolute value assuming two's complement
             duty_cycle = mag >> 6;
+        } else if (p.uart_cmd[0] == CMD_SET_CURRENT) {
+            I_max = p.uart_cmd[1];
+        } else if (p.uart_cmd[0] == CMD_SET_POSITION) {
+            cont_angle_des = p.uart_cmd[1] << 13;
         } else if (p.uart_cmd[0] == CMD_SET_SPEED) {
             // implement later
-        } else if (p.uart_cmd[0] == CMD_SET_POSITION) {
-            m_angle_des = p.uart
         }
-        
 
-//        p.uart_TX[0] = (uint8_t)(rpm >> 7) & 0b01111111;
-//        p.uart_TX[1] = (uint8_t)(rpm) & 0b01111111;
+        // p.uart_TX[0] = 0;
+        p.uart_TX[0] = (uint8_t)(p.uart_cmd[1] >> 7) & 0b01111111;
+        p.uart_TX[1] = (uint8_t)(p.uart_cmd[1] >> 0) & 0b01111111;
+        p.uart_TX[2] = (uint8_t)(cont_angle >> 14) & 0b01111111;
+        p.uart_TX[3] = (uint8_t)(cont_angle >> 7) & 0b01111111;
+        p.uart_TX[4] = MIN_INT8;
 
-        p.uart_TX[0] = 0;
-        p.uart_TX[1] = 0;
-        p.uart_TX[2] = (uint8_t)(m_angle >> 7) & 0b01111111;
-		p.uart_TX[3] = (uint8_t)(m_angle) & 0b01111111;
-        // p.uart_TX[2] = (uint8_t) (0);
+        // p.uart_TX[0] = (uint8_t)((I_u>>2) & 0b01111111);
+        // p.uart_TX[1] = (uint8_t)((I_v>>2) & 0b01111111);
+        // p.uart_TX[2] = (uint8_t)((I_w>>2) & 0b01111111);
 
+        // I_phase = abs16(I_u);
+        // if(abs16(I_v) > I_phase) I_phase = abs16(I_v);
+        // if(abs16(I_w) > I_phase) I_phase = abs16(I_w);
 
-        // uint8_t print_TX[20];
-        // sprintf((char*) print_TX, "m: %d \n\t", m_angle);
+        // p.uart_TX[3] = (uint8_t)(I_phase);
 
-        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 4); // DMA channel 4
+        RS485_SET_TX;
+        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 5); // DMA channel 4
         p.uart_idle = 0;
     }
 
@@ -344,20 +375,18 @@ void foc_loop() {
         cont_angle_prev = cont_angle;
 
         loop_freq = count * 100;
-//        count = 0;
+        count = 0;
 
         uart_watchdog++;
-        if(uart_watchdog > 5){
+        if (uart_watchdog > 5) {
             uart_watchdog = 5;
-            duty_cycle = 0;
+            // duty_cycle = 0;
         }
 
-
-//         uint8_t print_TX[50];
-//		 sprintf((char*) print_TX, " freq: %d\n I_d_filt: %d\n I_q_filt: %d\n \t", loop_freq, I_d_filt, I_q_filt);
-//		 sprintf((char*) print_TX, "m_angle: %d \n\t", m_angle);
-//		 RS485_SET_TX;
-//         HAL_UART_Transmit_DMA(&huart1, print_TX, 20);
+        // uint8_t print_TX[50];
+        // sprintf((char*) print_TX, " freq: %d\n I_d_filt: %d\n I_q_filt: %d\n \t", loop_freq, I_d_filt, I_q_filt);
+        // RS485_SET_TX;
+        // HAL_UART_Transmit_DMA(&huart1, print_TX, 20);
 
         p.print_flag = 0;
     }
@@ -371,7 +400,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) { // gets called before 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
     RS485_SET_RX;
     HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
-
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) { // receive overrun error happens once in a while, just restart RX

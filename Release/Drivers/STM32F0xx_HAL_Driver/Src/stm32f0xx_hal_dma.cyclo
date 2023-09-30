@@ -4,7 +4,7 @@
 ../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_dma.c:328:19:HAL_DMA_Start_IT	5
 ../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_dma.c:384:19:HAL_DMA_Abort	2
 ../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_dma.c:422:19:HAL_DMA_Abort_IT	3
-../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_dma.c:468:19:HAL_DMA_PollForTransfer	12
+../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_dma.c:468:19:HAL_DMA_PollForTransfer	10
 ../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_dma.c:569:6:HAL_DMA_IRQHandler	12
 ../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_dma.c:661:19:HAL_DMA_RegisterCallback	7
 ../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_dma.c:712:19:HAL_DMA_UnRegisterCallback	8

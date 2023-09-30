@@ -7,8 +7,8 @@
 ../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_adc.c:639:19:HAL_ADC_DeInit	5
 ../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_adc.c:1018:19:HAL_ADC_Start	5
 ../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_adc.c:1083:19:HAL_ADC_Stop	4
-../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_adc.c:1137:19:HAL_ADC_PollForConversion	14
-../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_adc.c:1261:19:HAL_ADC_PollForEvent	9
+../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_adc.c:1137:19:HAL_ADC_PollForConversion	13
+../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_adc.c:1261:19:HAL_ADC_PollForEvent	8
 ../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_adc.c:1341:19:HAL_ADC_Start_IT	6
 ../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_adc.c:1422:19:HAL_ADC_Stop_IT	4
 ../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_adc.c:1475:19:HAL_ADC_Start_DMA	5
