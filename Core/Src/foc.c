@@ -44,6 +44,8 @@ static uint16_t e_angle = 0;
 static uint16_t I_max = 0;
 static int32_t cont_angle_des = MIN_INT32; //min means no position tracking
 
+static int16_t encoder_res = 7;
+
 // How much the adc values are off at no current, offset by 2048 to center zero
 // current at 0
 static int16_t adc_U_offset = 2048 + 3;
@@ -117,12 +119,20 @@ void foc_startup() {
     HAL_Delay(1);
     HAL_ADCEx_Calibration_Start(&hadc); // seems like this uses VREFINT_CAL
 
+    // HAL_TIM_Base_Start(&htim1);  // Replace htim1 with your TIM_HandleTypeDef instance
+    // TIM1->EGR = TIM_EGR_UG;
+    // htim1.Instance->RCR = 0; // Set RCR
+
+
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
     HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1); // turn on complementary channel
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
     HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2); // turn on complementary channel
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
     HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3); // turn on complementary channel
+
+
+
 
     HAL_TIM_Base_Start_IT(&htim2); // 100Hz timer for printing
 
@@ -272,10 +282,6 @@ void foc_loop() {
         duty_cycle = clip(duty_cycle, 0, 60); //duty_cycle in [0, 511]
     }
 
-    // mag = 10;
-    // if(I_phase > I_max)
-
-
 
     // six-step commutation using e_angle, reverse, duty_cycle
     {
@@ -322,6 +328,12 @@ void foc_loop() {
 
     if (p.uart_idle) {
 
+        // clear the uart buffer
+        uint8_t temp_buffer[UARTSIZE];
+        while (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE)) {
+            HAL_UART_Receive(&huart1, temp_buffer, 1, 1);
+        }
+
         // check which of 3 bytes is the cmd and concat 14 data bytes into int16_t (signed)
         if (p.uart_RX[0] & 0x80) {
             p.uart_cmd[0] = p.uart_RX[0] & CMD_MASK;
@@ -338,31 +350,22 @@ void foc_loop() {
         if (p.uart_cmd[0] == CMD_SET_VOLTAGE) {
             reverse = (p.uart_cmd[1] >> 13) & 1;
             mag = reverse ? (~p.uart_cmd[1]) + 1 : p.uart_cmd[1]; // If negative, take the absolute value assuming two's complement
-            duty_cycle = mag >> 6;
+            duty_cycle = mag >> 4;
         } else if (p.uart_cmd[0] == CMD_SET_CURRENT) {
             I_max = p.uart_cmd[1];
         } else if (p.uart_cmd[0] == CMD_SET_POSITION) {
             cont_angle_des = p.uart_cmd[1] << 13;
         } else if (p.uart_cmd[0] == CMD_SET_SPEED) {
             // implement later
+        } else if (p.uart_cmd[0] == CMD_GET_POSITION) {
+            encoder_res = p.uart_cmd[1];
         }
 
-        // p.uart_TX[0] = 0;
         p.uart_TX[0] = (uint8_t)(p.uart_cmd[1] >> 7) & 0b01111111;
         p.uart_TX[1] = (uint8_t)(p.uart_cmd[1] >> 0) & 0b01111111;
-        p.uart_TX[2] = (uint8_t)(cont_angle >> 14) & 0b01111111;
-        p.uart_TX[3] = (uint8_t)(cont_angle >> 7) & 0b01111111;
+        p.uart_TX[2] = (uint8_t)(cont_angle >> (encoder_res + 7)) & 0b01111111;
+        p.uart_TX[3] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
         p.uart_TX[4] = MIN_INT8;
-
-        // p.uart_TX[0] = (uint8_t)((I_u>>2) & 0b01111111);
-        // p.uart_TX[1] = (uint8_t)((I_v>>2) & 0b01111111);
-        // p.uart_TX[2] = (uint8_t)((I_w>>2) & 0b01111111);
-
-        // I_phase = abs16(I_u);
-        // if(abs16(I_v) > I_phase) I_phase = abs16(I_v);
-        // if(abs16(I_w) > I_phase) I_phase = abs16(I_w);
-
-        // p.uart_TX[3] = (uint8_t)(I_phase);
 
         RS485_SET_TX;
         HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 5); // DMA channel 4
@@ -400,6 +403,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) { // gets called before 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
     RS485_SET_RX;
     HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
+
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) { // receive overrun error happens once in a while, just restart RX

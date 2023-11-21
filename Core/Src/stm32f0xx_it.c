@@ -173,6 +173,13 @@ void DMA1_Channel4_5_IRQHandler(void)
   /* USER CODE END DMA1_Channel4_5_IRQn 1 */
 }
 
+/* Define the ISR for TIM1 interrupt */
+void TIM1_BRK_UP_TRG_COM_IRQHandler(void) {
+  LED_RED;
+  LED_GREEN;
+  HAL_TIM_IRQHandler(&htim1); // Call the HAL handler to clear the interrupt
+}
+
 /**
   * @brief This function handles TIM2 global interrupt.
   */

@@ -25,7 +25,7 @@
 
 /* Size of Transmission and receive buffer */
 #define I2CSIZE 2
-#define UARTSIZE 3
+#define UARTSIZE 5
 
 /* 6 ADC channels in total:
  * [0] ADC0: Phase V current
@@ -74,6 +74,7 @@
 
 #define LED_RED HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, 1)
 #define LED_GREEN HAL_GPIO_WritePin(GPIOF, LED_STATUS_Pin, 0)
+#define LED_TOGGLE HAL_GPIO_TogglePin(GPIOF, LED_STATUS_Pin);
 
 #define ENABLE_DRIVE                              \
     HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, 1); \
