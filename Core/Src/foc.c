@@ -18,17 +18,17 @@
 #define Q16_SQRT3_2 ((uint16_t)56756) // (sqrt(3)/2) * 2^16
 #define Q16_1_2 ((uint16_t)32768)     // (1/2) * 2^16
 
-#define KP_d 0
-#define KI_d 0
-#define KF_d 1000
+#define KP_d -1600000
+#define KI_d -10000
+#define KF_d (1<<24)
 
-#define KP_q 0
-#define KI_q 0
-#define KF_q 1000
+#define KP_q 16000000
+#define KI_q -10000
+#define KF_q 0
 
 #define D_min 0
 #define D_max 64  // 2^6
-#define log2_V_per_D 10  // voltage is [-32768, 32768), duty is [0, 64), scale factor is 2^10
+#define log2_V_per_D 8  // voltage is [-32768, 32768), duty is [0, 64), scale factor is 2^10
 #define D_mid 32
 
 int16_t clip(int16_t x, int16_t min, int16_t max) {
@@ -211,6 +211,10 @@ void foc_loop() {
     if(!p.adc_conversion_flag) return;
     p.adc_conversion_flag = 0;
 
+
+    LED_RED;
+    LED_GREEN;
+
     count++;
 
 
@@ -285,8 +289,8 @@ void foc_loop() {
         I_d_error = I_d_des - I_d;
         I_q_error = I_q_des - I_q;
 
-        I_d_error_int = clip(I_d_error_int + (I_d_error >> 2), -32768, 32767);
-        I_q_error_int = clip(I_q_error_int + (I_q_error >> 2), -32768, 32767);
+        I_d_error_int = clip(I_d_error_int + (I_d_error >> 10), -32768, 32767);
+        I_q_error_int = clip(I_q_error_int + (I_q_error >> 10), -32768, 32767);
 
         // PI+feedforward control loop
         // Voltage is scaled to [-32768, 32767]
@@ -303,6 +307,9 @@ void foc_loop() {
         // "normalize" phase voltages around duty cycle midpoint for SVM
         V_offset = (min3(V_u, V_v, V_w) + max3(V_u, V_v, V_w)) >> 1;
 
+        // D_u = ((V_u - V_offset) >> log2_V_per_D) + D_mid;
+        // D_v = ((V_v - V_offset) >> log2_V_per_D) + D_mid;
+        // D_w = ((V_w - V_offset) >> log2_V_per_D) + D_mid;
         D_u = ((V_u - V_offset) >> log2_V_per_D) + D_mid;
         D_v = ((V_v - V_offset) >> log2_V_per_D) + D_mid;
         D_w = ((V_w - V_offset) >> log2_V_per_D) + D_mid;
@@ -333,37 +340,47 @@ void foc_loop() {
             step = ((e_angle + 10923) & (32768 - 1)) / 5461;
         }
 
-        //apply duty_cycle to phases according to step
-        if (step == 0) {
-            TIM1->CCR1 = duty_cycle;
-            TIM1->CCR2 = 0;
-            TIM1->CCR3 = 0;
+        int doFOC = 1;
+
+        if(doFOC){
+            TIM1->CCR1 = D_u;
+            TIM1->CCR2 = D_v;
+            TIM1->CCR3 = D_w;
+        }else{
+            //apply duty_cycle to phases according to step
+            if (step == 0) {
+                TIM1->CCR1 = duty_cycle;
+                TIM1->CCR2 = 0;
+                TIM1->CCR3 = 0;
+            }
+            if (step == 1) {
+                TIM1->CCR1 = duty_cycle;
+                TIM1->CCR2 = duty_cycle;
+                TIM1->CCR3 = 0;
+            }
+            if (step == 2) {
+                TIM1->CCR1 = 0;
+                TIM1->CCR2 = duty_cycle;
+                TIM1->CCR3 = 0;
+            }
+            if (step == 3) {
+                TIM1->CCR1 = 0;
+                TIM1->CCR2 = duty_cycle;
+                TIM1->CCR3 = duty_cycle;
+            }
+            if (step == 4) {
+                TIM1->CCR1 = 0;
+                TIM1->CCR2 = 0;
+                TIM1->CCR3 = duty_cycle;
+            }
+            if (step == 5) {
+                TIM1->CCR1 = duty_cycle;
+                TIM1->CCR2 = 0;
+                TIM1->CCR3 = duty_cycle;
+            }
         }
-        if (step == 1) {
-            TIM1->CCR1 = duty_cycle;
-            TIM1->CCR2 = duty_cycle;
-            TIM1->CCR3 = 0;
-        }
-        if (step == 2) {
-            TIM1->CCR1 = 0;
-            TIM1->CCR2 = duty_cycle;
-            TIM1->CCR3 = 0;
-        }
-        if (step == 3) {
-            TIM1->CCR1 = 0;
-            TIM1->CCR2 = duty_cycle;
-            TIM1->CCR3 = duty_cycle;
-        }
-        if (step == 4) {
-            TIM1->CCR1 = 0;
-            TIM1->CCR2 = 0;
-            TIM1->CCR3 = duty_cycle;
-        }
-        if (step == 5) {
-            TIM1->CCR1 = duty_cycle;
-            TIM1->CCR2 = 0;
-            TIM1->CCR3 = duty_cycle;
-        }
+
+        
     }
 
     if (p.uart_idle) {
@@ -391,6 +408,7 @@ void foc_loop() {
             reverse = (p.uart_cmd[1] >> 13) & 1;
             mag = reverse ? (~p.uart_cmd[1]) + 1 : p.uart_cmd[1]; // If negative, take the absolute value assuming two's complement
             duty_cycle = mag;
+            I_q_des = mag >> 4;
         } else if (p.uart_cmd[0] == CMD_SET_CURRENT) {
             I_max = p.uart_cmd[1];
         } else if (p.uart_cmd[0] == CMD_SET_POSITION) {
@@ -414,7 +432,7 @@ void foc_loop() {
 
         p.uart_TX[0] = (uint8_t)(0 >> 7) & 0b01111111;
         p.uart_TX[1] = (uint8_t)(D_u >> 0) & 0b01111111;
-        p.uart_TX[2] = (uint8_t)(D_v >> 7) & 0b01111111;
+        p.uart_TX[2] = (uint8_t)(D_v >> 0) & 0b01111111;
         p.uart_TX[3] = (uint8_t)(D_w >> 0) & 0b01111111;
 
         p.uart_TX[4] = (uint8_t)(I_d_filt >> 7) & 0b01111111;
@@ -476,8 +494,6 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) { // receive overrun erro
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
     if (hadc->Instance == ADC1) {
         // End of conversion actions
-        LED_RED;
-        LED_GREEN;
         p.adc_conversion_flag = 1; //allow main loop to continiue
     }
 }

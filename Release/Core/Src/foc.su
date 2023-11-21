@@ -5,8 +5,8 @@
 ../Core/Src/foc.c:66:9:abs32	0	static
 ../Core/Src/foc.c:71:9:pad14	0	static
 ../Core/Src/foc.c:149:6:foc_startup	48	static
-../Core/Src/foc.c:209:6:foc_loop	88	static
-../Core/Src/foc.c:459:6:HAL_UART_RxCpltCallback	0	static
-../Core/Src/foc.c:463:6:HAL_UART_TxCpltCallback	8	static
-../Core/Src/foc.c:469:6:HAL_UART_ErrorCallback	8	static
-../Core/Src/foc.c:476:6:HAL_ADC_ConvCpltCallback	8	static
+../Core/Src/foc.c:209:6:foc_loop	112	static
+../Core/Src/foc.c:477:6:HAL_UART_RxCpltCallback	0	static
+../Core/Src/foc.c:481:6:HAL_UART_TxCpltCallback	8	static
+../Core/Src/foc.c:487:6:HAL_UART_ErrorCallback	8	static
+../Core/Src/foc.c:494:6:HAL_ADC_ConvCpltCallback	0	static
