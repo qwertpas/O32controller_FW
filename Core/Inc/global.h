@@ -114,6 +114,7 @@ typedef struct {
     uint8_t print_flag;
     uint8_t i2c_complete_flag;
     uint8_t uart_idle;
+    uint8_t adc_conversion_flag;
 } PeripherialStruct;
 extern PeripherialStruct p;
 

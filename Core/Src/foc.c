@@ -189,6 +189,8 @@ void foc_startup() {
         HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 1);
 
         HAL_ADC_Start_DMA(&hadc, (uint32_t *)p.adc_vals, NBR_ADC); // start the adc in dma mode
+
+        HAL_UART_Receive(&huart1, p.uart_RX, 1, 1);
     }
 
     // stop motor
@@ -205,6 +207,9 @@ void foc_startup() {
 }
 
 void foc_loop() {
+
+    if(!p.adc_conversion_flag) return;
+    p.adc_conversion_flag = 0;
 
     count++;
 
@@ -473,6 +478,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
         // End of conversion actions
         LED_RED;
         LED_GREEN;
+        p.adc_conversion_flag = 1; //allow main loop to continiue
     }
 }
 
