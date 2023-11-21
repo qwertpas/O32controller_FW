@@ -155,7 +155,7 @@ void DMA1_Channel1_IRQHandler(void)
   /* USER CODE END DMA1_Channel1_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_adc);
   /* USER CODE BEGIN DMA1_Channel1_IRQn 1 */
-
+  
   /* USER CODE END DMA1_Channel1_IRQn 1 */
 }
 
@@ -169,14 +169,22 @@ void DMA1_Channel4_5_IRQHandler(void)
   /* USER CODE END DMA1_Channel4_5_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_usart1_tx);
   /* USER CODE BEGIN DMA1_Channel4_5_IRQn 1 */
+  
 
   /* USER CODE END DMA1_Channel4_5_IRQn 1 */
 }
 
 /* Define the ISR for TIM1 interrupt */
 void TIM1_BRK_UP_TRG_COM_IRQHandler(void) {
-  LED_RED;
-  LED_GREEN;
+  //center of PWM low period to sample ADCs
+  // LED_RED;
+  // LED_GREEN;
+
+  HAL_ADC_Start_DMA(&hadc, (uint32_t *)p.adc_vals, NBR_ADC);
+  // LED_RED;
+  // LED_GREEN;
+
+
   HAL_TIM_IRQHandler(&htim1); // Call the HAL handler to clear the interrupt
 }
 

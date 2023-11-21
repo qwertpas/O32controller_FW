@@ -212,8 +212,8 @@ static void MX_ADC_Init(void) {
     hadc.Init.LowPowerAutoPowerOff = DISABLE;
     hadc.Init.ContinuousConvMode = DISABLE;
     hadc.Init.DiscontinuousConvMode = DISABLE;
-    hadc.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-    hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+    hadc.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T1_TRGO;
+    hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
     hadc.Init.DMAContinuousRequests = DISABLE;
     hadc.Init.Overrun = ADC_OVR_DATA_PRESERVED;
     if (HAL_ADC_Init(&hadc) != HAL_OK) {
@@ -373,7 +373,7 @@ static void MX_TIM1_Init(void) {
     htim1.Init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED3;
     htim1.Init.Period = 1200 - 1;
     htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-    htim1.Init.RepetitionCounter = 0;
+    htim1.Init.RepetitionCounter = 1;
     htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
     if (HAL_TIM_Base_Init(&htim1) != HAL_OK) {
         Error_Handler();
@@ -427,14 +427,8 @@ static void MX_TIM1_Init(void) {
     /* USER CODE BEGIN TIM1_Init 2 */
 
     HAL_TIM_Base_Start_IT(&htim1); // Start TIM1 and enable the update interrupt
-    // __HAL_TIM_ENABLE(&htim1);
 
-
-    // __HAL_TIM_ENABLE_IT(&htim1, TIM_IT_UPDATE); // Enable the TIM1 update interrupt
-    // __HAL_TIM_ENABLE_IT(&htim1, TIM_IT_TRIGGER); // Enable the TIM1 update interrupt
-
-
-    // HAL_NVIC_SetPriority(TIM1_BRK_UP_TRG_COM_IRQn, 0, 0); // Set the priority for TIM1 global interrupt
+    HAL_NVIC_SetPriority(TIM1_BRK_UP_TRG_COM_IRQn, 0, 0); // Set the priority for TIM1 global interrupt
     HAL_NVIC_EnableIRQ(TIM1_BRK_UP_TRG_COM_IRQn); // Enable the TIM1 global interrupt
 
     /* USER CODE END TIM1_Init 2 */
@@ -584,12 +578,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     if (htim == &htim2) { // 100Hz
         p.print_flag = 1;
     }
-    if (htim->Instance == TIM1) {
-        if(first_update){
-            htim1.Instance->RCR = 1; // Set RCR
-            first_update = 0;
-        }
-    }
+    // if (htim->Instance == TIM1) {
+    //     if(first_update){
+    //         htim1.Instance->RCR = 1; // Set RCR
+    //         first_update = 0;
+    //     }
+    // }
 }
 
 // // TIM trigger callback

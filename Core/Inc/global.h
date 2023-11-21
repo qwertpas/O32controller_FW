@@ -25,7 +25,7 @@
 
 /* Size of Transmission and receive buffer */
 #define I2CSIZE 2
-#define UARTSIZE 5
+#define UARTSIZE 10
 
 /* 6 ADC channels in total:
  * [0] ADC0: Phase V current

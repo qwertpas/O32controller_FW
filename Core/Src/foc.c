@@ -20,16 +20,63 @@
 
 #define KP_d 0
 #define KI_d 0
-#define KF_d 0
+#define KF_d 1000
+
 #define KP_q 0
 #define KI_q 0
-#define KF_q 0
+#define KF_q 1000
 
+#define D_min 0
+#define D_max 64  // 2^6
+#define log2_V_per_D 10  // voltage is [-32768, 32768), duty is [0, 64), scale factor is 2^10
+#define D_mid 32
+
+int16_t clip(int16_t x, int16_t min, int16_t max) {
+    // if (x > max) {
+    //     return max;
+    // } else if (x < min) {
+    //     return min;
+    // } else {
+    //     return x;
+    // }
+    return (x > max ? (max) : (x < min ? min : x));
+}
+
+// int16_t min3(int16_t x, int16_t y, int16_t z){
+//     return (x < y ? (x < z ? x : z) : (y < z ? y : z));
+// }
+
+// int16_t max3(int16_t x, int16_t y, int16_t z){
+//     return (x > y ? (x > z ? x : z) : (y > z ? y : z));
+// }
+
+int32_t min3(int32_t x, int32_t y, int32_t z){
+    return (x < y ? (x < z ? x : z) : (y < z ? y : z));
+}
+
+int32_t max3(int32_t x, int32_t y, int32_t z){
+    return (x > y ? (x > z ? x : z) : (y > z ? y : z));
+}
+
+int16_t abs16(int16_t val) {
+    if(val < 0) return -val;
+    else return val;
+}
+
+int32_t abs32(int32_t val) {
+    if(val < 0) return -val;
+    else return val;
+}
+
+int16_t pad14(int32_t val) {
+    return (val & 0x2000) ? (val | 0xC000) : val;
+}
+ 
 static uint8_t reverse = 0;
 static uint16_t mag = 0;
 
 static uint8_t step = 0;
-static uint8_t duty_cycle = 0;
+static uint16_t duty_cycle = 0;
 
 static uint16_t m_angle = 0;
 static uint16_t m_angle_prev = 0;
@@ -73,55 +120,37 @@ static int16_t I_q_filt = 0;
 
 // current setpoints
 static int16_t I_d_des = 0; // usually 0 unless field weakening
-static int16_t I_d_error = 0;
+static int16_t I_d_error = 0; // torque producing
 static int32_t I_d_error_int = 0;
-
 static int16_t I_q_des = 0;
 static int16_t I_q_error = 0;
 static int32_t I_q_error_int = 0;
 
-// DQ voltage commands
-static int16_t V_d = 0; // usually 0 unless field weakening
-static int16_t V_q = 0; // usually 0 unless field weakening
+// voltage commands
+static int16_t V_d = 0;
+static int16_t V_q = 0;
+
+static int32_t V_offset = 0;
+
+static int32_t V_u = 0;
+static int32_t V_v = 0;
+static int32_t V_w = 0;
+
+static int16_t D_u = 0;
+static int16_t D_v = 0;
+static int16_t D_w = 0;
 
 static uint32_t count = 0;     // incremented every loop, reset at 100Hz
 static uint16_t loop_freq = 0; // Hz, calculated at 100Hz using count
 
 static uint8_t uart_watchdog = 0;
 
-int16_t clip(int16_t x, int16_t min, int16_t max) {
-    if (x > max) {
-        return max;
-    } else if (x < min) {
-        return min;
-    } else {
-        return x;
-    }
-}
-
-int16_t abs16(int16_t val) {
-    if(val < 0) return -val;
-    else return val;
-}
-
-int32_t abs32(int32_t val) {
-    if(val < 0) return -val;
-    else return val;
-}
-
-int16_t pad14(int32_t val) {
-    return (val & 0x2000) ? (val | 0xC000) : val;
-}
 
 void foc_startup() {
 
     HAL_ADC_Stop(&hadc); // stop adc before calibration
     HAL_Delay(1);
     HAL_ADCEx_Calibration_Start(&hadc); // seems like this uses VREFINT_CAL
-
-    // HAL_TIM_Base_Start(&htim1);  // Replace htim1 with your TIM_HandleTypeDef instance
-    // TIM1->EGR = TIM_EGR_UG;
-    // htim1.Instance->RCR = 0; // Set RCR
 
 
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
@@ -131,9 +160,7 @@ void foc_startup() {
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
     HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3); // turn on complementary channel
 
-
-
-
+    
     HAL_TIM_Base_Start_IT(&htim2); // 100Hz timer for printing
 
     TIM1->CCR1 = 0;
@@ -181,9 +208,9 @@ void foc_loop() {
 
     count++;
 
-    // to collapse FOC calcs
+
+    // read MA702 magnetic angle
     {
-        // read MA702 magnetic angle
         HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 0);
         HAL_SPI_TransmitReceive(&hspi1, p.spi_TX, p.spi_RX, 2, HAL_MAX_DELAY);
         HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 1);
@@ -192,17 +219,18 @@ void foc_loop() {
         m_angle = ((uint16_t)(p.spi_RX[0]) << 8) + p.spi_RX[1] + 16384;
         e_angle = (m_angle * PPAIRS - e_offset) & (32768 - 1); // convert to electrical angle and modulo
 
-        if (m_angle_prev < 8192 &&
-            m_angle > 24576) { // detect angle wraparound and increment a revolution
+        if (m_angle_prev < 8192 && m_angle > 24576) { // detect angle wraparound and increment a revolution
             revs -= 32768;
         } else if (m_angle < 8192 && m_angle_prev > 24576) {
             revs += 32768;
         }
         cont_angle = m_angle + revs;
         m_angle_prev = m_angle;
+    }
 
-        // read ADCs
-        HAL_ADC_Start_DMA(&hadc, (uint32_t *)p.adc_vals, NBR_ADC);
+    // FOC calcs
+    {
+        // HAL_ADC_Start_DMA(&hadc, (uint32_t *)p.adc_vals, NBR_ADC);
 
         // filter ADC values (https://stackoverflow.com/questions/38918530/simple-low-pass-filter-in-fixed-point)
         // phase currents are in adc units [-2048, 2047] (1 bit sign, 11 bit value)
@@ -252,20 +280,27 @@ void foc_loop() {
         I_d_error = I_d_des - I_d;
         I_q_error = I_q_des - I_q;
 
-        I_d_error_int = clip(I_d_error_int + I_d_error, -32, 32);
-        I_q_error_int = clip(I_q_error_int + I_q_error, -32, 32);
+        I_d_error_int = clip(I_d_error_int + (I_d_error >> 2), -32768, 32767);
+        I_q_error_int = clip(I_q_error_int + (I_q_error >> 2), -32768, 32767);
 
         // PI+feedforward control loop
         // Voltage is scaled to [-32768, 32767]
-        V_d = KP_d * I_d_error + KI_d * I_d_error_int + KF_d * I_d_des;
-        V_q = KP_q * I_q_error + KI_q * I_q_error_int + KF_q * I_q_des;
-        V_d = clip(V_d, -32, 32);
-        V_q = clip(V_q, -32, 32);
+        V_d = (KP_d * I_d_error + KI_d * I_d_error_int + KF_d * I_d_des) >> 16;
+        V_q = (KP_q * I_q_error + KI_q * I_q_error_int + KF_q * I_q_des) >> 16;
+        V_d = clip(V_d, -32768, 32767);
+        V_q = clip(V_q, -32768, 32767);
 
         // Convert DQ voltages to phase voltages, avg error around 0.4%
-        int32_t V_u = (Q16_cos_t * V_d - Q16_sin_t * V_q) >> 15;
-        int32_t V_v = ((Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * V_d + (Q16_SQRT3_2_cos_t + Q16_1_2_sin_t) * V_q) >> 15;
-        int32_t V_w = (-(Q16_SQRT3_2_sin_t + Q16_1_2_cos_t) * V_d - (Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * V_q) >> 15;
+        V_u = (Q16_cos_t * V_d - Q16_sin_t * V_q) >> 15;
+        V_v = ((Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * V_d + (Q16_SQRT3_2_cos_t + Q16_1_2_sin_t) * V_q) >> 15;
+        V_w = (-(Q16_SQRT3_2_sin_t + Q16_1_2_cos_t) * V_d - (Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * V_q) >> 15;
+
+        // "normalize" phase voltages around duty cycle midpoint for SVM
+        V_offset = (min3(V_u, V_v, V_w) + max3(V_u, V_v, V_w)) >> 1;
+
+        D_u = ((V_u - V_offset) >> log2_V_per_D) + D_mid;
+        D_v = ((V_v - V_offset) >> log2_V_per_D) + D_mid;
+        D_w = ((V_w - V_offset) >> log2_V_per_D) + D_mid;
     }
 
     
@@ -350,7 +385,7 @@ void foc_loop() {
         if (p.uart_cmd[0] == CMD_SET_VOLTAGE) {
             reverse = (p.uart_cmd[1] >> 13) & 1;
             mag = reverse ? (~p.uart_cmd[1]) + 1 : p.uart_cmd[1]; // If negative, take the absolute value assuming two's complement
-            duty_cycle = mag >> 4;
+            duty_cycle = mag;
         } else if (p.uart_cmd[0] == CMD_SET_CURRENT) {
             I_max = p.uart_cmd[1];
         } else if (p.uart_cmd[0] == CMD_SET_POSITION) {
@@ -361,14 +396,34 @@ void foc_loop() {
             encoder_res = p.uart_cmd[1];
         }
 
-        p.uart_TX[0] = (uint8_t)(p.uart_cmd[1] >> 7) & 0b01111111;
-        p.uart_TX[1] = (uint8_t)(p.uart_cmd[1] >> 0) & 0b01111111;
-        p.uart_TX[2] = (uint8_t)(cont_angle >> (encoder_res + 7)) & 0b01111111;
-        p.uart_TX[3] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
-        p.uart_TX[4] = MIN_INT8;
+        // p.uart_TX[0] = (uint8_t)(p.uart_cmd[1] >> 7) & 0b01111111;
+        // p.uart_TX[1] = (uint8_t)(p.uart_cmd[1] >> 0) & 0b01111111;
+        // p.uart_TX[2] = (uint8_t)(cont_angle >> (encoder_res + 7)) & 0b01111111;
+        // p.uart_TX[3] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
+        // p.uart_TX[4] = MIN_INT8;
+
+        // p.uart_TX[0] = (uint8_t)(p.adc_vals[3] >> 7) & 0b01111111;
+        // p.uart_TX[1] = (uint8_t)(p.adc_vals[3] >> 0) & 0b01111111;
+        // p.uart_TX[2] = (uint8_t)(p.adc_vals[0] >> 7) & 0b01111111;
+        // p.uart_TX[3] = (uint8_t)(p.adc_vals[0] >> 0) & 0b01111111;
+
+        p.uart_TX[0] = (uint8_t)(0 >> 7) & 0b01111111;
+        p.uart_TX[1] = (uint8_t)(D_u >> 0) & 0b01111111;
+        p.uart_TX[2] = (uint8_t)(D_v >> 7) & 0b01111111;
+        p.uart_TX[3] = (uint8_t)(D_w >> 0) & 0b01111111;
+
+        p.uart_TX[4] = (uint8_t)(I_d_filt >> 7) & 0b01111111;
+        p.uart_TX[5] = (uint8_t)(I_d_filt >> 0) & 0b01111111;
+        p.uart_TX[6] = (uint8_t)(I_q_filt >> 7) & 0b01111111;
+        p.uart_TX[7] = (uint8_t)(I_q_filt >> 0) & 0b01111111;
+        // p.uart_TX[2] = (uint8_t)(cont_angle >> (encoder_res + 7)) & 0b01111111;
+        // p.uart_TX[3] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
+        p.uart_TX[8] = MIN_INT8;
+
+        
 
         RS485_SET_TX;
-        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 5); // DMA channel 4
+        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 9); // DMA channel 4
         p.uart_idle = 0;
     }
 
@@ -411,3 +466,13 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) { // receive overrun erro
     HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
     LED_RED;
 }
+
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
+    if (hadc->Instance == ADC1) {
+        // End of conversion actions
+        LED_RED;
+        LED_GREEN;
+    }
+}
+
