@@ -22,9 +22,9 @@
 #define KI_d -10000
 #define KF_d (1<<24)
 
-#define KP_q 16000000
+#define KP_q -1600000
 #define KI_q -10000
-#define KF_q 0
+#define KF_q (1<<24)
 
 #define D_min 0
 #define D_max 64  // 2^6
