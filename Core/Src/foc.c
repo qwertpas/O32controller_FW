@@ -340,7 +340,7 @@ void foc_loop() {
             step = ((e_angle + 10923) & (32768 - 1)) / 5461;
         }
 
-        int doFOC = 1;
+        int doFOC = 0;
 
         if(doFOC){
             TIM1->CCR1 = D_u;
@@ -430,23 +430,23 @@ void foc_loop() {
         // p.uart_TX[2] = (uint8_t)(p.adc_vals[0] >> 7) & 0b01111111;
         // p.uart_TX[3] = (uint8_t)(p.adc_vals[0] >> 0) & 0b01111111;
 
-        p.uart_TX[0] = (uint8_t)(0 >> 7) & 0b01111111;
-        p.uart_TX[1] = (uint8_t)(D_u >> 0) & 0b01111111;
-        p.uart_TX[2] = (uint8_t)(D_v >> 0) & 0b01111111;
-        p.uart_TX[3] = (uint8_t)(D_w >> 0) & 0b01111111;
+        p.uart_TX[0] = (uint8_t)(cont_angle_des >> 7) & 0b01111111;
+        p.uart_TX[1] = (uint8_t)(cont_angle_des >> 0) & 0b01111111;
+        p.uart_TX[2] = (uint8_t)(cont_angle >> 7) & 0b01111111;
+        p.uart_TX[3] = (uint8_t)(cont_angle >> 0) & 0b01111111;
 
-        p.uart_TX[4] = (uint8_t)(I_d_filt >> 7) & 0b01111111;
-        p.uart_TX[5] = (uint8_t)(I_d_filt >> 0) & 0b01111111;
-        p.uart_TX[6] = (uint8_t)(I_q_filt >> 7) & 0b01111111;
-        p.uart_TX[7] = (uint8_t)(I_q_filt >> 0) & 0b01111111;
+        // p.uart_TX[4] = (uint8_t)(I_d_filt >> 7) & 0b01111111;
+        // p.uart_TX[5] = (uint8_t)(I_d_filt >> 0) & 0b01111111;
+        // p.uart_TX[6] = (uint8_t)(I_q_filt >> 7) & 0b01111111;
+        // p.uart_TX[7] = (uint8_t)(I_q_filt >> 0) & 0b01111111;
         // p.uart_TX[2] = (uint8_t)(cont_angle >> (encoder_res + 7)) & 0b01111111;
         // p.uart_TX[3] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
-        p.uart_TX[8] = MIN_INT8;
+        p.uart_TX[4] = MIN_INT8;
 
         
 
         RS485_SET_TX;
-        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 9); // DMA channel 4
+        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 5); // DMA channel 4
         p.uart_idle = 0;
     }
 

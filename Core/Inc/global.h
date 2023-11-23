@@ -11,11 +11,11 @@
 #include "stm32f0xx_hal.h"
 
 // 4-bit address
-#define UART_ADDR 0x2
+#define UART_ADDR 0x3
 
 // Motor parameters
 #define PPAIRS 7        // pole pairs
-#define INVERT_MAG 0    //invert=0 for red motor, invert=1 for green motor
+#define INVERT_MAG 1    //invert=0 for red motor, invert=1 for green motor
 #define POS_KP 10
 #define POS_THRES 10
 

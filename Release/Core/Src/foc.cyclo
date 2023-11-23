@@ -5,7 +5,7 @@
 ../Core/Src/foc.c:66:9:abs32	1
 ../Core/Src/foc.c:71:9:pad14	2
 ../Core/Src/foc.c:149:6:foc_startup	2
-../Core/Src/foc.c:209:6:foc_loop	30
+../Core/Src/foc.c:209:6:foc_loop	33
 ../Core/Src/foc.c:477:6:HAL_UART_RxCpltCallback	1
 ../Core/Src/foc.c:481:6:HAL_UART_TxCpltCallback	1
 ../Core/Src/foc.c:487:6:HAL_UART_ErrorCallback	1
