@@ -11,9 +11,13 @@
 #include "stm32f0xx_hal.h"
 
 // 4-bit address
-#define UART_ADDR 0x5
+#define UART_ADDR 0x3
 
-#define DO_FOC 0
+#define SIXSTEP_MODE    0
+#define FOC_MODE        1
+#define ENCODER_MODE    2
+
+#define SELECTED_MODE ENCODER_MODE
 
 // Motor parameters
 #define PPAIRS 7        // pole pairs

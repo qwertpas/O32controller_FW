@@ -1,0 +1,2 @@
+../Core/Src/encoder.c:63:6:encoder_startup	40	static
+../Core/Src/encoder.c:92:6:encoder_loop	48	static

@@ -10,6 +10,7 @@
 
 #include "sixstep.h"
 #include "foc.h"
+#include "encoder.h"
 
 #include <stdio.h>
 
@@ -122,11 +123,20 @@ int main(void) {
     DISABLE_DRIVE;
     RS485_SET_RX;
 
-    if(DO_FOC){
-        foc_startup();
-    }else{
-    	sixstep_startup();
+    switch(SELECTED_MODE){
+        case SIXSTEP_MODE:
+            sixstep_startup();
+            break;
+        case FOC_MODE:
+            foc_startup();
+            break;
+        case ENCODER_MODE:
+            encoder_startup();
+            break;
+        default:
+            break;
     }
+
 
     /* USER CODE END 2 */
 
@@ -135,11 +145,19 @@ int main(void) {
 
     while (1) {
 
-        if(DO_FOC){
-            foc_loop();
-        }else{
+        switch(SELECTED_MODE){
+        case SIXSTEP_MODE:
             sixstep_loop();
-        }
+            break;
+        case FOC_MODE:
+            foc_loop();
+            break;
+        case ENCODER_MODE:
+            encoder_loop();
+            break;
+        default:
+            break;
+    }
 
         /* USER CODE END WHILE */
 

@@ -300,43 +300,11 @@ void foc_loop() {
             step = ((e_angle + 10923) & (32768 - 1)) / 5461;
         }
 
-        if(DO_FOC){
-            TIM1->CCR1 = D_u;
-            TIM1->CCR2 = D_v;
-            TIM1->CCR3 = D_w;
-        }else{
-            //apply duty_cycle to phases according to step
-            if (step == 0) {
-                TIM1->CCR1 = duty_cycle;
-                TIM1->CCR2 = 0;
-                TIM1->CCR3 = 0;
-            }
-            if (step == 1) {
-                TIM1->CCR1 = duty_cycle;
-                TIM1->CCR2 = duty_cycle;
-                TIM1->CCR3 = 0;
-            }
-            if (step == 2) {
-                TIM1->CCR1 = 0;
-                TIM1->CCR2 = duty_cycle;
-                TIM1->CCR3 = 0;
-            }
-            if (step == 3) {
-                TIM1->CCR1 = 0;
-                TIM1->CCR2 = duty_cycle;
-                TIM1->CCR3 = duty_cycle;
-            }
-            if (step == 4) {
-                TIM1->CCR1 = 0;
-                TIM1->CCR2 = 0;
-                TIM1->CCR3 = duty_cycle;
-            }
-            if (step == 5) {
-                TIM1->CCR1 = duty_cycle;
-                TIM1->CCR2 = 0;
-                TIM1->CCR3 = duty_cycle;
-            }
-        }
+        //apply center aligned PWM
+        TIM1->CCR1 = D_u;
+        TIM1->CCR2 = D_v;
+        TIM1->CCR3 = D_w;
+        
 
         
     }
