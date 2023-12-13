@@ -5,234 +5,328 @@
  *      Author: chris
  */
 
-#include "sixstep.h"
+#include "foc.h"
+#include "comdef.h"
+#include "utils.h"
 
-#define ADC_PER_VOLT 1241 //4095/3.3
+#define ADC_PER_VOLT 1241 // 4095/3.3
 #define UAMP_PER_ADC 52351
 
-#define ADC_FILT_LVL 8
+#define ADC_FILT_LVL 6
+#define DQ_FILT_LVL 8
 
-//static keyword makes these variables only accessible inside this file
-static uint8_t step;
-static uint16_t mag;
+ 
+static uint8_t reverse = 0;
+static uint16_t mag = 0;
 
-static uint32_t m_angle;
-static uint32_t m_angle_prev;
-static int32_t revs;
-static int32_t cont_angle;
-static int32_t cont_angle_prev;
-static int32_t rpm;
+static uint8_t step = 0;
+static uint16_t duty = 0;
+static uint16_t duty_offset = 0;
+static uint16_t duty_offsetted = 0;
 
-static uint16_t e_offset;
-static uint16_t e_angle;
+static uint16_t m_angle = 0;
+static uint16_t m_angle_prev = 0;
+static int32_t revs = 0;
+static int32_t cont_angle = 0;
+static int32_t cont_angle_prev = 0;
+static int32_t rpm = 0;
 
-static int16_t adc_U_offset = 3; //How much the adc values are off at no current
-static int16_t adc_V_offset = -10;
-static int16_t adc_W_offset = -4;
+static uint16_t e_offset = 0;
+static uint16_t e_angle = 0;
 
-static uint32_t adc_U_accum = 0;
-static uint32_t adc_V_accum = 0;
-static uint32_t adc_W_accum = 0;
+static uint16_t I_max = 130;
+static int32_t cont_angle_des = MIN_INT32; //min means no position tracking
 
-static uint16_t adc_U = 0;
-static uint16_t adc_V = 0;
-static uint16_t adc_W = 0;
+static int16_t encoder_res = 7;
 
-static int32_t curr_U = 0;
-static int32_t curr_V = 0;
-static int32_t curr_W = 0;
+// How much the adc values are off at no current, offset by 2048 to center zero
+// current at 0
+static int16_t adc_U_offset = 2048 + 3 - 86;
+static int16_t adc_V_offset = 2048 + -10 - 60;
+static int16_t adc_W_offset = 2048 + -4 - 71;
 
-static uint32_t count = 0;
+// units are in ADC counts [-2048,2047]
+static int16_t I_u = 0;
+static int16_t I_v = 0;
+static int16_t I_w = 0;
+static int16_t I_phase = 0; //max phase current
+
+// used for filtering
+static int32_t I_u_accum = 0;
+static int32_t I_v_accum = 0;
+static int32_t I_w_accum = 0;
+
+static uint32_t count = 0;     // incremented every loop, reset at 100Hz
+static uint16_t loop_freq = 0; // Hz, calculated at 100Hz using count
 
 
 void sixstep_startup() {
-	//disable RS485 tranceiver driver
-	HAL_GPIO_WritePin(USART_DE_GPIO_Port, USART_DE_Pin, 0);
 
-	HAL_ADC_Stop(&hadc); //stop adc before calibration
-	HAL_Delay(1);
-	HAL_ADCEx_Calibration_Start(&hadc); //seems like this uses VREFINT_CAL
-
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1); // turn on complementary channel
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2); // turn on complementary channel
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
-	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3); // turn on complementary channel
-
-	HAL_TIM_Base_Start_IT(&htim2); //100Hz timer for printing
-
-	TIM1->CCR1 = 0;
-	TIM1->CCR2 = 0;
-	TIM1->CCR3 = 0;
-
-	//green, wait 2 seconds, then red to give time for flashing
-	LED_RED;
-	HAL_Delay(2000);
-	LED_GREEN;
-	HAL_Delay(100);
-
-	HAL_I2C_EnableListen_IT(&hi2c1);
-
-	//get out of standby mode to allow gate drive
-	HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_SET);
-	//move to step 0
-	TIM1->CCR1 = 20;
-	TIM1->CCR2 = 0;
-	TIM1->CCR3 = 0;
-
-	HAL_Delay(1000);
-
-	for (int i = 0; i < 10; i++) { //take some angle measurements to let the sensor settle
-		HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 0);
-		HAL_SPI_TransmitReceive(&hspi1, p.spi_TX, p.spi_RX, 2, HAL_MAX_DELAY);
-		HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 1);
-	}
-	// 780.19 angle counts per 1/6th of an electrical cycle
-	// 4681.14 angle counts per electrical cycle
-	// 90º out of phase would be 1/4th of an electrical cycle, so 1170.285 angle counts
-	m_angle = (uint32_t) ((p.spi_RX[0] << 8) + p.spi_RX[1] + 16384); // 0 to 32,767
-	m_angle = m_angle * 36000 / 32768; //0 - 36000 (hundreths of degrees)
-	e_offset = (m_angle / 100 * PPAIRS) % 360;
-	e_angle = 0;
-
-	step = 0;
-	mag = 20;
-
-	m_angle_prev = m_angle;
-	revs = 0;
-	cont_angle = 0;
-	cont_angle_prev = 0;
-	rpm = 0;
+    HAL_ADC_Stop(&hadc); // stop adc before calibration
+    HAL_Delay(1);
+    HAL_ADCEx_Calibration_Start(&hadc); // seems like this uses VREFINT_CAL
 
 
+    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+    HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1); // turn on complementary channel
+    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+    HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2); // turn on complementary channel
+    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+    HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3); // turn on complementary channel
+
+    
+    HAL_TIM_Base_Start_IT(&htim2); // 100Hz timer for printing
+
+    TIM1->CCR1 = 0;
+    TIM1->CCR2 = 0;
+    TIM1->CCR3 = 0;
+
+    // green, wait 2 seconds, then red to give time for flashing
+    LED_RED;
+    HAL_Delay(2000);
+    LED_GREEN;
+    HAL_Delay(100);
+
+    // get out of standby mode to allow gate drive
+    ENABLE_DRIVE;
+
+    // move to step 0
+    TIM1->CCR1 = 20;
+    TIM1->CCR2 = 0;
+    TIM1->CCR3 = 0;
+
+    HAL_Delay(1000);
+
+    for (int i = 0; i < 10; i++) { // take some measurements to let the sensors settle
+        HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 0);
+        HAL_SPI_TransmitReceive(&hspi1, p.spi_TX, p.spi_RX, 2, HAL_MAX_DELAY);
+        HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 1);
+
+        HAL_ADC_Start_DMA(&hadc, (uint32_t *)p.adc_vals, NBR_ADC); // start the adc in dma mode
+
+        HAL_UART_Receive(&huart1, p.uart_RX, 1, 1);
+    }
+
+	m_angle = (uint16_t)((p.spi_RX[0] << 8) + p.spi_RX[1] + 16384); // 0 to 32767
+    m_angle_prev = m_angle;
+    e_offset = (m_angle * PPAIRS - e_offset) & (32768 - 1);         // convert to electrical angle, modulo 32768
+
+    // stop motor
+    TIM1->CCR1 = 0;
+    TIM1->CCR2 = 0;
+    TIM1->CCR3 = 0;
+
+    HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
 }
 
 void sixstep_loop() {
-	//read MA702 magnetic angle
-	HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 0);
-	HAL_SPI_TransmitReceive(&hspi1, p.spi_TX, p.spi_RX, 2, HAL_MAX_DELAY);
-	HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 1);
 
-	m_angle = (uint32_t) ((p.spi_RX[0] << 8) + p.spi_RX[1] + 16384); // 0 to 32,767
-	m_angle = (m_angle * 36000 / 32768); //0 - 36000 (hundreths of degrees)
-	e_angle = ((m_angle / 100 * PPAIRS) - e_offset) % 360;
+    count++;
 
-	m_angle %= 36000;
+    // read MA702, update m_angle, e_angle, and cont_angle
+    {
+        HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 0);
+        HAL_SPI_TransmitReceive(&hspi1, p.spi_TX, p.spi_RX, 2, HAL_MAX_DELAY);
+        HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 1);
 
-	if (m_angle_prev < 9000 && m_angle > 27000) {
-		revs -= 36000;
-	} else if (m_angle < 9000 && m_angle_prev > 27000) {
-		revs += 36000;
+        // angles represented in [0,32767] (~91 per degree)
+        m_angle = ((uint16_t)(p.spi_RX[0]) << 8) + p.spi_RX[1] + 16384;
+        e_angle = (m_angle * PPAIRS - e_offset) & (32768 - 1); // convert to electrical angle and modulo
+
+        if (m_angle_prev < 8192 && m_angle > 24576) { // detect angle wraparound and increment a revolution
+            revs -= 32768;
+        } else if (m_angle < 8192 && m_angle_prev > 24576) {
+            revs += 32768;
+        }
+        cont_angle = m_angle + revs;
+        m_angle_prev = m_angle;
+    }
+
+	//read currents from ADCs and low pass filter
+	{
+		// filter ADC values (https://stackoverflow.com/questions/38918530/simple-low-pass-filter-in-fixed-point)
+		// phase currents are in adc units [-2048, 2047] (1 bit sign, 11 bit value)
+		// to get current in milliamps, multiply by UAMP_PER_ADC then divide by 1000
+		I_u = I_u_accum >> ADC_FILT_LVL;
+		I_u_accum = I_u_accum - I_u + (p.adc_vals[3] - adc_U_offset);
+
+		I_v = I_v_accum >> ADC_FILT_LVL;
+		I_v_accum = I_v_accum - I_v + (p.adc_vals[0] - adc_V_offset);
+
+		I_w = I_w_accum >> ADC_FILT_LVL;
+		I_w_accum = I_w_accum - I_w + (p.adc_vals[1] - adc_W_offset);
+
+		I_phase = abs16(I_u);
+		if(abs16(I_v) > I_phase) I_phase = abs16(I_v);
+		if(abs16(I_w) > I_phase) I_phase = abs16(I_w);
 	}
-	cont_angle = (99 * cont_angle + 1 * (m_angle + revs)) / 100;
 
-	int cmd = p.i2c_RX[0];
-	if (cmd == 0) {
-		mag = 0;
-	} else if (cmd >= 1 && cmd <= 8) {
-		HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_SET);
+	//position control
+	if(cont_angle_des != MIN_INT32){
+		//tracking position
+		int32_t cont_angle_error = cont_angle_des - cont_angle;
 
-		if (cont_angle > 36500) {
-			step = ((e_angle + 300) % 360) / 60;
-			mag = (cont_angle - 36500) / 100;
-		} else if (cont_angle < 35500) {
-			step = ((e_angle + 120) % 360) / 60;
-			mag = (35500 - cont_angle) / 100;
-		} else {
-			mag = 0;
+		reverse = (cont_angle_error > 0) ? 0 : 1;
+
+		duty = abs32(cont_angle_error) >> 6;
+		// reverse = (cont_angle_des > cont_angle) ? 1 : 0;
+
+		// duty = 20;
+		duty = clip(duty, 0, 60);
+	}
+
+	//current limit
+	if(I_phase > I_max){
+        if(duty_offset < duty) duty_offset += 1; //is subtracted from duty cycle
+	}else{
+        if(duty_offset > 0) duty_offset -= 1;
+    }
+
+
+    // six-step commutation using e_angle, reverse, duty
+    {
+        // calculate step from e_angle
+        if (INVERT_MAG) e_angle *= -1;
+        if (reverse) {
+            step = ((e_angle + 27307) & (32768 - 1)) / 5461; // divide 16 bit angle into sextants
+        } else {
+            step = ((e_angle + 10923) & (32768 - 1)) / 5461;
+        }
+
+        duty_offsetted = clip(duty - duty_offset, 0, 1199);
+
+		//apply duty to phases according to step
+		if (step == 0) {
+			TIM1->CCR1 = duty_offsetted;
+			TIM1->CCR2 = 0;
+			TIM1->CCR3 = 0;
 		}
-
-		if (mag > cmd * 10) {
-			mag = cmd * 10;
+		if (step == 1) {
+			TIM1->CCR1 = duty_offsetted;
+			TIM1->CCR2 = duty_offsetted;
+			TIM1->CCR3 = 0;
 		}
-
-	} else if (cmd == 9) {
-		HAL_GPIO_WritePin(GPIOF, OC_TH_STBY1_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(GPIOF, OC_TH_STBY2_Pin, GPIO_PIN_SET);
-		step = ((e_angle + 120) % 360) / 60;
-	}
-
-	m_angle_prev = m_angle;
-
-	if (step == 0) {
-		TIM1->CCR1 = mag;
-		TIM1->CCR2 = 0;
-		TIM1->CCR3 = 0;
-	}
-	if (step == 1) {
-		TIM1->CCR1 = mag;
-		TIM1->CCR2 = mag;
-		TIM1->CCR3 = 0;
-	}
-	if (step == 2) {
-		TIM1->CCR1 = 0;
-		TIM1->CCR2 = mag;
-		TIM1->CCR3 = 0;
-	}
-	if (step == 3) {
-		TIM1->CCR1 = 0;
-		TIM1->CCR2 = mag;
-		TIM1->CCR3 = mag;
-	}
-	if (step == 4) {
-		TIM1->CCR1 = 0;
-		TIM1->CCR2 = 0;
-		TIM1->CCR3 = mag;
-	}
-	if (step == 5) {
-		TIM1->CCR1 = mag;
-		TIM1->CCR2 = 0;
-		TIM1->CCR3 = mag;
-	}
-
-	//read all ADCs
-	HAL_ADC_Start_DMA(&hadc, (uint32_t*) p.adc_vals, NBR_ADC);  // start the adc in dma mode
-
-
-	adc_U = adc_U_accum >> ADC_FILT_LVL;
-	adc_U_accum = adc_U_accum - adc_U + (p.adc_vals[3] - adc_U_offset); //https://stackoverflow.com/questions/38918530/simple-low-pass-filter-in-fixed-point
-
-	adc_V = adc_V_accum >> ADC_FILT_LVL;
-	adc_V_accum = adc_V_accum - adc_V + (p.adc_vals[0] - adc_V_offset);
-
-	adc_W = adc_W_accum >> ADC_FILT_LVL;
-	adc_W_accum = adc_W_accum - adc_W + (p.adc_vals[1] - adc_W_offset);
-
-	curr_U = UAMP_PER_ADC * (adc_U - 2048) / 1000;
-	curr_V = UAMP_PER_ADC * (adc_V - 2048) / 1000;
-	curr_W = UAMP_PER_ADC * (adc_W - 2048) / 1000;
-
-
-	count++;
-
-	if (p.print_flag) {
-
-		rpm = (cont_angle - cont_angle_prev) / 60;
-		cont_angle_prev = cont_angle;
-
-		memset(p.uart_TX, 0, sizeof(p.uart_TX));
-
-		sprintf((char*) p.uart_TX, " U_mamp: %d \n V_mamp: %d \n W_mamp: %d \n \t",
-				adc_U, adc_V, adc_W);
-
-//		sprintf((char*) p.uart_TX, "Helloo  \r\n\t");
-		HAL_UART_Transmit_DMA(&huart1, p.uart_TX, UARTSIZE);
-
-		p.print_flag = 0;
-		count = 0;
-
-		//restart I2C listener after a transfer
-		if (p.i2c_complete_flag == 1) {
-			HAL_I2C_EnableListen_IT(&hi2c1);
-			p.i2c_complete_flag = 0;
+		if (step == 2) {
+			TIM1->CCR1 = 0;
+			TIM1->CCR2 = duty_offsetted;
+			TIM1->CCR3 = 0;
 		}
-	}
+		if (step == 3) {
+			TIM1->CCR1 = 0;
+			TIM1->CCR2 = duty_offsetted;
+			TIM1->CCR3 = duty_offsetted;
+		}
+		if (step == 4) {
+			TIM1->CCR1 = 0;
+			TIM1->CCR2 = 0;
+			TIM1->CCR3 = duty_offsetted;
+		}
+		if (step == 5) {
+			TIM1->CCR1 = duty_offsetted;
+			TIM1->CCR2 = 0;
+			TIM1->CCR3 = duty_offsetted;
+		}  
+    }
+
+
+
+    if (p.uart_idle) {
+
+        // clear the uart buffer
+        uint8_t temp_buffer[UARTSIZE];
+        while (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE)) {
+            HAL_UART_Receive(&huart1, temp_buffer, 1, 1);
+        }
+
+        // check which of 3 bytes is the cmd and concat 14 data bytes into int16_t (signed)
+        if (p.uart_RX[0] & 0x80) {
+            p.uart_cmd[0] = p.uart_RX[0] & CMD_MASK;
+            p.uart_cmd[1] = (p.uart_RX[1] << 7) | (p.uart_RX[2]);
+        } else if (p.uart_RX[1] & 0x80) {
+            p.uart_cmd[0] = p.uart_RX[1] & CMD_MASK;
+            p.uart_cmd[1] = (p.uart_RX[2] << 7) | (p.uart_RX[0]);
+        } else {
+            p.uart_cmd[0] = p.uart_RX[2] & CMD_MASK;
+            p.uart_cmd[1] = (p.uart_RX[0] << 7) | (p.uart_RX[1]);
+        }
+        p.uart_cmd[1] = pad14(p.uart_cmd[1]);
+
+        if (p.uart_cmd[0] == CMD_SET_VOLTAGE) {
+            reverse = (p.uart_cmd[1] >> 13) & 1;
+            mag = reverse ? (~p.uart_cmd[1]) + 1 : p.uart_cmd[1]; // If negative, take the absolute value assuming two's complement
+            duty = mag;
+        } else if (p.uart_cmd[0] == CMD_SET_CURRENT) {
+            I_max = p.uart_cmd[1]; //0-2048 range
+        } else if (p.uart_cmd[0] == CMD_SET_POSITION) {
+            cont_angle_des = p.uart_cmd[1] << 13;
+        } else if (p.uart_cmd[0] == CMD_SET_SPEED) {
+            // implement later
+        } else if (p.uart_cmd[0] == CMD_GET_POSITION) {
+            encoder_res = p.uart_cmd[1];
+        }
+
+        // p.uart_TX[0] = (uint8_t)(p.uart_cmd[1] >> 7) & 0b01111111;
+        // p.uart_TX[1] = (uint8_t)(p.uart_cmd[1] >> 0) & 0b01111111;
+        // p.uart_TX[2] = (uint8_t)(cont_angle >> (encoder_res + 7)) & 0b01111111;
+        // p.uart_TX[3] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
+        // p.uart_TX[4] = MIN_INT8;
+
+        // p.uart_TX[0] = (uint8_t)(p.adc_vals[3] >> 7) & 0b01111111;
+        // p.uart_TX[1] = (uint8_t)(p.adc_vals[3] >> 0) & 0b01111111;
+        // p.uart_TX[2] = (uint8_t)(p.adc_vals[0] >> 7) & 0b01111111;
+        // p.uart_TX[3] = (uint8_t)(p.adc_vals[0] >> 0) & 0b01111111;
+
+        // p.uart_TX[0] = (uint8_t)(cont_angle >> (encoder_res + 7)) & 0b01111111;
+        // p.uart_TX[1] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
+        // p.uart_TX[2] = (uint8_t)(I_phase >> 7) & 0b01111111;
+        // p.uart_TX[3] = (uint8_t)(I_phase >> 0) & 0b01111111;
+
+        p.uart_TX[0] = (uint8_t)(I_phase >> 7) & 0b01111111;
+        p.uart_TX[1] = (uint8_t)(I_phase >> 0) & 0b01111111;
+        p.uart_TX[2] = (uint8_t)(duty >> 7) & 0b01111111;
+        p.uart_TX[3] = (uint8_t)(duty >> 0) & 0b01111111;
+        p.uart_TX[4] = (uint8_t)(cont_angle >> 7) & 0b01111111;
+        p.uart_TX[5] = (uint8_t)(cont_angle >> 0) & 0b01111111;
+
+        uint8_t checksum = 0;
+        for(int i=0; i<6; i++){
+            checksum += p.uart_TX[i];
+        }
+        p.uart_TX[6] = (uint8_t)(checksum) & 0b01111111;
+
+        // p.uart_TX[4] = (uint8_t)(I_d_filt >> 7) & 0b01111111;
+        // p.uart_TX[5] = (uint8_t)(I_d_filt >> 0) & 0b01111111;
+        // p.uart_TX[6] = (uint8_t)(I_q_filt >> 7) & 0b01111111;
+        // p.uart_TX[7] = (uint8_t)(I_q_filt >> 0) & 0b01111111;
+        // p.uart_TX[2] = (uint8_t)(cont_angle >> (encoder_res + 7)) & 0b01111111;
+        // p.uart_TX[3] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
+        p.uart_TX[7] = MIN_INT8;
+
+        
+
+        RS485_SET_TX;
+        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 8); // DMA channel 4
+        p.uart_idle = 0;
+    }
+
+    if (p.print_flag) { // 100Hz clock
+
+        rpm = ((cont_angle - cont_angle_prev) * 100 * 60) >> 15; // should be accurate within reasonable RPM range if 32-bit
+        cont_angle_prev = cont_angle;
+
+        loop_freq = count * 100;
+        count = 0;
+
+        p.uart_watchdog++;
+        if (p.uart_watchdog > 5) {
+            p.uart_watchdog = 5;
+            // duty = 0;
+        }
+
+        p.print_flag = 0;
+    }
+    LED_GREEN;
 }
-
-
 
 
 

@@ -11,7 +11,9 @@
 #include "stm32f0xx_hal.h"
 
 // 4-bit address
-#define UART_ADDR 0x3
+#define UART_ADDR 0x5
+
+#define DO_FOC 0
 
 // Motor parameters
 #define PPAIRS 7        // pole pairs
@@ -115,6 +117,8 @@ typedef struct {
     uint8_t i2c_complete_flag;
     uint8_t uart_idle;
     uint8_t adc_conversion_flag;
+
+    uint8_t uart_watchdog;
 } PeripherialStruct;
 extern PeripherialStruct p;
 

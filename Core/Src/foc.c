@@ -7,6 +7,7 @@
 
 #include "foc.h"
 #include "comdef.h"
+#include "utils.h"
 
 #define ADC_PER_VOLT 1241 // 4095/3.3
 #define UAMP_PER_ADC 52351
@@ -30,47 +31,6 @@
 #define D_max 64  // 2^6
 #define log2_V_per_D 8  // voltage is [-32768, 32768), duty is [0, 64), scale factor is 2^10
 #define D_mid 32
-
-int16_t clip(int16_t x, int16_t min, int16_t max) {
-    // if (x > max) {
-    //     return max;
-    // } else if (x < min) {
-    //     return min;
-    // } else {
-    //     return x;
-    // }
-    return (x > max ? (max) : (x < min ? min : x));
-}
-
-// int16_t min3(int16_t x, int16_t y, int16_t z){
-//     return (x < y ? (x < z ? x : z) : (y < z ? y : z));
-// }
-
-// int16_t max3(int16_t x, int16_t y, int16_t z){
-//     return (x > y ? (x > z ? x : z) : (y > z ? y : z));
-// }
-
-int32_t min3(int32_t x, int32_t y, int32_t z){
-    return (x < y ? (x < z ? x : z) : (y < z ? y : z));
-}
-
-int32_t max3(int32_t x, int32_t y, int32_t z){
-    return (x > y ? (x > z ? x : z) : (y > z ? y : z));
-}
-
-int16_t abs16(int16_t val) {
-    if(val < 0) return -val;
-    else return val;
-}
-
-int32_t abs32(int32_t val) {
-    if(val < 0) return -val;
-    else return val;
-}
-
-int16_t pad14(int32_t val) {
-    return (val & 0x2000) ? (val | 0xC000) : val;
-}
  
 static uint8_t reverse = 0;
 static uint16_t mag = 0;
@@ -340,9 +300,7 @@ void foc_loop() {
             step = ((e_angle + 10923) & (32768 - 1)) / 5461;
         }
 
-        int doFOC = 0;
-
-        if(doFOC){
+        if(DO_FOC){
             TIM1->CCR1 = D_u;
             TIM1->CCR2 = D_v;
             TIM1->CCR3 = D_w;
@@ -472,29 +430,5 @@ void foc_loop() {
         p.print_flag = 0;
     }
     LED_GREEN;
-}
-
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) { // gets called before all bits finish
-    uart_watchdog = 0;
-}
-
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
-    RS485_SET_RX;
-    HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
-
-}
-
-void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) { // receive overrun error happens once in a while, just restart RX
-    RS485_SET_RX;
-    HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
-    LED_RED;
-}
-
-
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
-    if (hadc->Instance == ADC1) {
-        // End of conversion actions
-        p.adc_conversion_flag = 1; //allow main loop to continiue
-    }
 }
 

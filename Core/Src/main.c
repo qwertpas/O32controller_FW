@@ -7,7 +7,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "global.h"
-// #include "sixstep.h"
+
+#include "sixstep.h"
 #include "foc.h"
 
 #include <stdio.h>
@@ -121,8 +122,11 @@ int main(void) {
     DISABLE_DRIVE;
     RS485_SET_RX;
 
-    //	sixstep_startup();
-    foc_startup();
+    if(DO_FOC){
+        foc_startup();
+    }else{
+    	sixstep_startup();
+    }
 
     /* USER CODE END 2 */
 
@@ -131,8 +135,11 @@ int main(void) {
 
     while (1) {
 
-        //		sixstep_loop();
-        foc_loop();
+        if(DO_FOC){
+            foc_loop();
+        }else{
+            sixstep_loop();
+        }
 
         /* USER CODE END WHILE */
 
@@ -417,7 +424,7 @@ static void MX_TIM1_Init(void) {
     sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
     sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
     sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-    sBreakDeadTimeConfig.DeadTime = 10;
+    sBreakDeadTimeConfig.DeadTime = 20;
     sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
     sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
     sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
@@ -578,21 +585,31 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     if (htim == &htim2) { // 100Hz
         p.print_flag = 1;
     }
-    // if (htim->Instance == TIM1) {
-    //     if(first_update){
-    //         htim1.Instance->RCR = 1; // Set RCR
-    //         first_update = 0;
-    //     }
-    // }
 }
 
-// // TIM trigger callback
-// void HAL_TIM_TriggerCallback(TIM_HandleTypeDef *htim) {
-//     // Add your code here
-//     LED_RED;
-//     LED_GREEN;
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) { // gets called before all bits finish
+    p.uart_watchdog = 0;
+}
 
-// }
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
+    RS485_SET_RX;
+    HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
+
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) { // receive overrun error happens once in a while, just restart RX
+    RS485_SET_RX;
+    HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
+    LED_RED;
+}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
+    if (hadc->Instance == ADC1) {
+        // End of conversion actions
+        p.adc_conversion_flag = 1; //allow main loop to continiue
+    }
+}
+
 
 
 /* USER CODE END 4 */
