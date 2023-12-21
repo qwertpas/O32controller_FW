@@ -120,6 +120,10 @@ void foc_startup() {
     HAL_Delay(1);
     HAL_ADCEx_Calibration_Start(&hadc); // seems like this uses VREFINT_CAL
 
+    HAL_TIM_Base_Start(&htim1);  // Replace htim1 with your TIM_HandleTypeDef instance
+    TIM1->EGR = TIM_EGR_UG;
+    htim1.Instance->RCR = 1; // Set RCR
+
 
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
     HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1); // turn on complementary channel

@@ -145,6 +145,8 @@ int main(void) {
 
     while (1) {
 
+        LED_GREEN;
+
         switch(SELECTED_MODE){
         case SIXSTEP_MODE:
             sixstep_loop();
@@ -398,7 +400,7 @@ static void MX_TIM1_Init(void) {
     htim1.Init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED1;
     htim1.Init.Period = MAX_DUTY;
     htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-    htim1.Init.RepetitionCounter = 1; // use repetition=1 to create update event every other time
+    htim1.Init.RepetitionCounter = 0; // start with 0, then set RCR1 to create update event every other time on low edge
     htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
     if (HAL_TIM_Base_Init(&htim1) != HAL_OK) {
         Error_Handler();
@@ -618,7 +620,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) { // receive overrun error happens once in a while, just restart RX
     RS485_SET_RX;
     HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
-    // LED_RED;
+    LED_RED;
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
