@@ -193,7 +193,7 @@ void sixstep_loop() {
             step = ((e_angle + 10923) & (32768 - 1)) / 5461;
         }
 
-        duty_offsetted = clip(duty - duty_offset, 0, 1199);
+        duty_offsetted = clip(duty - duty_offset, 0, MAX_DUTY);
 
 		//apply duty to phases according to step
 		if (step == 0) {

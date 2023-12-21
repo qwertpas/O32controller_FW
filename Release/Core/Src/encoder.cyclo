@@ -1,2 +1,2 @@
-../Core/Src/encoder.c:63:6:encoder_startup	2
-../Core/Src/encoder.c:92:6:encoder_loop	14
+../Core/Src/encoder.c:40:6:encoder_startup	2
+../Core/Src/encoder.c:69:6:encoder_loop	14

@@ -8,6 +8,7 @@
 #include "foc.h"
 #include "comdef.h"
 #include "utils.h"
+#include <math.h>
 
 #define ADC_PER_VOLT 1241 // 4095/3.3
 #define UAMP_PER_ADC 52351
@@ -19,24 +20,30 @@
 #define Q16_SQRT3_2 ((uint16_t)56756) // (sqrt(3)/2) * 2^16
 #define Q16_1_2 ((uint16_t)32768)     // (1/2) * 2^16
 
-#define KP_d -1600000
-#define KI_d -10000
-#define KF_d (1<<24)
+// #define KP_d -1600000
+// #define KI_d -10000
+// #define KF_d (1<<24)
 
-#define KP_q -1600000
-#define KI_q -10000
+#define KP_d 0
+#define KI_d 0
+#define KF_d 0
+
+// #define KP_q -1600000
+// #define KI_q -10000
+// #define KF_q (1<<24)
+
+#define KP_q 0
+#define KI_q 0
 #define KF_q (1<<24)
 
 #define D_min 0
-#define D_max 64  // 2^6
-#define log2_V_per_D 8  // voltage is [-32768, 32768), duty is [0, 64), scale factor is 2^10
-#define D_mid 32
+#define D_max MAX_DUTY
+#define D_mid (D_max/2)
+#define log2_V_per_D LOG2((1<<16)/D_max)  // rightshift amount to map voltage [-32768, 32768) to [0, D_max)
+
  
 static uint8_t reverse = 0;
 static uint16_t mag = 0;
-
-static uint8_t step = 0;
-static uint16_t duty_cycle = 0;
 
 static uint16_t m_angle = 0;
 static uint16_t m_angle_prev = 0;
@@ -108,6 +115,7 @@ static uint8_t uart_watchdog = 0;
 
 void foc_startup() {
 
+
     HAL_ADC_Stop(&hadc); // stop adc before calibration
     HAL_Delay(1);
     HAL_ADCEx_Calibration_Start(&hadc); // seems like this uses VREFINT_CAL
@@ -172,8 +180,8 @@ void foc_loop() {
     p.adc_conversion_flag = 0;
 
 
-    LED_RED;
-    LED_GREEN;
+    // LED_RED;
+    // LED_GREEN;
 
     count++;
 
@@ -187,6 +195,7 @@ void foc_loop() {
         // angles represented in [0,32767] (~91 per degree)
         m_angle = ((uint16_t)(p.spi_RX[0]) << 8) + p.spi_RX[1] + 16384;
         e_angle = (m_angle * PPAIRS - e_offset) & (32768 - 1); // convert to electrical angle and modulo
+        if (INVERT_MAG) e_angle *= -1;
 
         if (m_angle_prev < 8192 && m_angle > 24576) { // detect angle wraparound and increment a revolution
             revs -= 32768;
@@ -254,8 +263,10 @@ void foc_loop() {
 
         // PI+feedforward control loop
         // Voltage is scaled to [-32768, 32767]
-        V_d = (KP_d * I_d_error + KI_d * I_d_error_int + KF_d * I_d_des) >> 16;
-        V_q = (KP_q * I_q_error + KI_q * I_q_error_int + KF_q * I_q_des) >> 16;
+        V_d = ((KP_d * I_d_error) >> 16) + ((KI_d * I_d_error_int) >> 16) + ((KF_d * I_d_des) >> 16);
+        V_q = ((KP_q * I_q_error) >> 16) + ((KI_q * I_q_error_int) >> 16) + ((KF_q * I_q_des) >> 16);
+        
+        
         V_d = clip(V_d, -32768, 32767);
         V_q = clip(V_q, -32768, 32767);
 
@@ -282,31 +293,25 @@ void foc_loop() {
 
         reverse = (cont_angle_error > 0) ? 0 : 1;
 
-        duty_cycle = abs32(cont_angle_error) >> 6;
-        // reverse = (cont_angle_des > cont_angle) ? 1 : 0;
-
-        // duty_cycle = 20;
-        duty_cycle = clip(duty_cycle, 0, 60); //duty_cycle in [0, 511]
+        //set I_des
     }
 
 
-    // six-step commutation using e_angle, reverse, duty_cycle
+    //apply center aligned PWM
     {
-        // calculate step from e_angle
-        if (INVERT_MAG) e_angle *= -1;
-        if (reverse) {
-            step = ((e_angle + 27307) & (32768 - 1)) / 5461; // divide 16 bit angle into sextants
-        } else {
-            step = ((e_angle + 10923) & (32768 - 1)) / 5461;
-        }
-
-        //apply center aligned PWM
-        TIM1->CCR1 = D_u;
-        TIM1->CCR2 = D_v;
-        TIM1->CCR3 = D_w;
-        
-
-        
+        if(I_q_des == 0){
+            TIM1->CCR1 = 0;
+            TIM1->CCR2 = 0;
+            TIM1->CCR3 = 0;
+        }else if(!reverse){ //don't know why switching the phases doesn't make it reverse
+            TIM1->CCR1 = D_u;
+            TIM1->CCR2 = D_v;
+            TIM1->CCR3 = D_w;
+        }else{
+            TIM1->CCR1 = D_u;
+            TIM1->CCR2 = D_w;
+            TIM1->CCR3 = D_v;
+        }   
     }
 
     if (p.uart_idle) {
@@ -333,8 +338,7 @@ void foc_loop() {
         if (p.uart_cmd[0] == CMD_SET_VOLTAGE) {
             reverse = (p.uart_cmd[1] >> 13) & 1;
             mag = reverse ? (~p.uart_cmd[1]) + 1 : p.uart_cmd[1]; // If negative, take the absolute value assuming two's complement
-            duty_cycle = mag;
-            I_q_des = mag >> 4;
+            I_q_des = mag >> 2;
         } else if (p.uart_cmd[0] == CMD_SET_CURRENT) {
             I_max = p.uart_cmd[1];
         } else if (p.uart_cmd[0] == CMD_SET_POSITION) {
@@ -356,23 +360,28 @@ void foc_loop() {
         // p.uart_TX[2] = (uint8_t)(p.adc_vals[0] >> 7) & 0b01111111;
         // p.uart_TX[3] = (uint8_t)(p.adc_vals[0] >> 0) & 0b01111111;
 
-        p.uart_TX[0] = (uint8_t)(cont_angle_des >> 7) & 0b01111111;
-        p.uart_TX[1] = (uint8_t)(cont_angle_des >> 0) & 0b01111111;
-        p.uart_TX[2] = (uint8_t)(cont_angle >> 7) & 0b01111111;
-        p.uart_TX[3] = (uint8_t)(cont_angle >> 0) & 0b01111111;
+        p.uart_TX[0] = (uint8_t)(V_u >> 9) & 0b01111111;
+        p.uart_TX[1] = (uint8_t)(V_u >> 2) & 0b01111111;
+        p.uart_TX[2] = (uint8_t)(V_v >> 9) & 0b01111111;
+        p.uart_TX[3] = (uint8_t)(V_v >> 2) & 0b01111111;
+        p.uart_TX[4] = (uint8_t)(V_w >> 9) & 0b01111111;
+        p.uart_TX[5] = (uint8_t)(V_w >> 2) & 0b01111111;
+        p.uart_TX[6] = (uint8_t)((D_u+1) >> 0) & 0b01111111;
+        p.uart_TX[7] = (uint8_t)((D_v+1) >> 0) & 0b01111111;
+        p.uart_TX[8] = (uint8_t)((D_w+1) >> 0) & 0b01111111;
 
-        // p.uart_TX[4] = (uint8_t)(I_d_filt >> 7) & 0b01111111;
-        // p.uart_TX[5] = (uint8_t)(I_d_filt >> 0) & 0b01111111;
-        // p.uart_TX[6] = (uint8_t)(I_q_filt >> 7) & 0b01111111;
-        // p.uart_TX[7] = (uint8_t)(I_q_filt >> 0) & 0b01111111;
-        // p.uart_TX[2] = (uint8_t)(cont_angle >> (encoder_res + 7)) & 0b01111111;
-        // p.uart_TX[3] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
-        p.uart_TX[4] = MIN_INT8;
+        // uint8_t checksum = 0;
+        // for(int i=0; i<8; i++){
+        //     checksum += p.uart_TX[i];
+        // }
+        // p.uart_TX[8] = (uint8_t)(checksum) & 0b01111111;
+
+        p.uart_TX[9] = MIN_INT8;
 
         
 
         RS485_SET_TX;
-        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 5); // DMA channel 4
+        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 10); // DMA channel 4
         p.uart_idle = 0;
     }
 
@@ -387,7 +396,6 @@ void foc_loop() {
         uart_watchdog++;
         if (uart_watchdog > 5) {
             uart_watchdog = 5;
-            // duty_cycle = 0;
         }
 
         // uint8_t print_TX[50];
@@ -397,6 +405,6 @@ void foc_loop() {
 
         p.print_flag = 0;
     }
-    LED_GREEN;
+    // LED_GREEN;
 }
 

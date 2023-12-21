@@ -10,20 +10,28 @@
 
 #include "stm32f0xx_hal.h"
 
-// 4-bit address
-#define UART_ADDR 0x3
-
 #define SIXSTEP_MODE    0
 #define FOC_MODE        1
 #define ENCODER_MODE    2
 
-#define SELECTED_MODE ENCODER_MODE
+
+
+/* ============= START CONFIG ================= */
+
+// 4-bit address
+#define UART_ADDR 0x2
+
+#define SELECTED_MODE FOC_MODE //SIXSTEP, FOC, ENCODER
+#define PWM_FREQ 20000 //kHz
 
 // Motor parameters
 #define PPAIRS 7        // pole pairs
-#define INVERT_MAG 1    //invert=0 for red motor, invert=1 for green motor
-#define POS_KP 10
-#define POS_THRES 10
+#define INVERT_MAG 0    //invert=0 for red motor, invert=1 for green motor
+
+/* ============= END CONFIG ================= */
+
+
+#define MAX_DUTY ((64e6/PWM_FREQ) / 2 - 1) //at PWM_FREQ=40kHz, MAX_DUTY=799
 
 #define MAX_INT32 0x7FFFFFFF
 #define MIN_INT32 0x80000000 //used as the end char
@@ -42,6 +50,8 @@
  * [5] VREF
  */
 #define NBR_ADC 6
+
+
 
 // calibration values for temperature sensor and ADC internal refernce. See datasheet section 3.10.2
 #define TS_CAL1 *((uint16_t *)0x1FFFF7B8)

@@ -177,12 +177,12 @@ void DMA1_Channel4_5_IRQHandler(void)
 /* Define the ISR for TIM1 interrupt */
 void TIM1_BRK_UP_TRG_COM_IRQHandler(void) {
   //center of PWM low period to sample ADCs
-  // LED_RED;
+  LED_RED;
   // LED_GREEN;
 
   HAL_ADC_Start_DMA(&hadc, (uint32_t *)p.adc_vals, NBR_ADC);
   // LED_RED;
-  // LED_GREEN;
+  LED_GREEN;
 
 
   HAL_TIM_IRQHandler(&htim1); // Call the HAL handler to clear the interrupt

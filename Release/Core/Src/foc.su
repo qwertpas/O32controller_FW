@@ -1,2 +1,2 @@
-../Core/Src/foc.c:109:6:foc_startup	48	static
-../Core/Src/foc.c:169:6:foc_loop	104	static
+../Core/Src/foc.c:116:6:foc_startup	48	static
+../Core/Src/foc.c:177:6:foc_loop	96	static

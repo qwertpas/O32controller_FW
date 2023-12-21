@@ -1,7 +1,11 @@
 #include "utils.h" 
 
 
-int16_t clip(int16_t x, int16_t min, int16_t max) {
+// int16_t clip16(int16_t x, int16_t min, int16_t max) {
+//     return (x > max ? (max) : (x < min ? min : x));
+// }
+
+int32_t clip(int32_t x, int32_t min, int32_t max) {
     return (x > max ? (max) : (x < min ? min : x));
 }
 
@@ -26,3 +30,4 @@ int32_t abs32(int32_t val) {
 int16_t pad14(int32_t val) {
     return (val & 0x2000) ? (val | 0xC000) : val;
 }
+

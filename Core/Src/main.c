@@ -185,7 +185,7 @@ void SystemClock_Config(void) {
     RCC_OscInitStruct.HSI14CalibrationValue = 16;
     RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
     RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-    RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL12; // can do RCC_PLL_MUL16 for 64MHz clock speed (affects PWM)
+    RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL16; // can do RCC_PLL_MUL16 for 64MHz clock speed (affects PWM)
     RCC_OscInitStruct.PLL.PREDIV = RCC_PREDIV_DIV1;
     if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
         Error_Handler();
@@ -396,9 +396,9 @@ static void MX_TIM1_Init(void) {
     htim1.Instance = TIM1;
     htim1.Init.Prescaler = 0;
     htim1.Init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED1;
-    htim1.Init.Period = 1200 - 1;
+    htim1.Init.Period = MAX_DUTY;
     htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-    htim1.Init.RepetitionCounter = 0; // use repetition=1 to create update event every other time
+    htim1.Init.RepetitionCounter = 1; // use repetition=1 to create update event every other time
     htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
     if (HAL_TIM_Base_Init(&htim1) != HAL_OK) {
         Error_Handler();
@@ -618,12 +618,13 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) { // receive overrun error happens once in a while, just restart RX
     RS485_SET_RX;
     HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
-    LED_RED;
+    // LED_RED;
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
     if (hadc->Instance == ADC1) {
         // End of conversion actions
+        LED_GREEN;
         p.adc_conversion_flag = 1; //allow main loop to continiue
     }
 }

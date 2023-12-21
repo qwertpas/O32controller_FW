@@ -12,18 +12,13 @@
 #define ADC_PER_VOLT 1241 // 4095/3.3
 #define UAMP_PER_ADC 52351
 
-#define ADC_FILT_LVL 6
-#define DQ_FILT_LVL 8
+#define MANGLE_FILT_LVL 4
 
  
-static uint8_t reverse = 0;
-static uint16_t mag = 0;
 
-static uint8_t step = 0;
-static uint16_t duty = 0;
-static uint16_t duty_offset = 0;
-static uint16_t duty_offsetted = 0;
 
+static uint16_t m_angle_new = 0;
+static uint32_t m_angle_accum = 0;
 static uint16_t m_angle = 0;
 static uint16_t m_angle_prev = 0;
 static int32_t revs = 0;
@@ -34,27 +29,9 @@ static int32_t rpm = 0;
 static uint16_t e_offset = 0;
 static uint16_t e_angle = 0;
 
-static uint16_t I_max = 130;
-static int32_t cont_angle_des = MIN_INT32; //min means no position tracking
 
 static int16_t encoder_res = 7;
 
-// How much the adc values are off at no current, offset by 2048 to center zero
-// current at 0
-static int16_t adc_U_offset = 2048 + 3 - 86;
-static int16_t adc_V_offset = 2048 + -10 - 60;
-static int16_t adc_W_offset = 2048 + -4 - 71;
-
-// units are in ADC counts [-2048,2047]
-static int16_t I_u = 0;
-static int16_t I_v = 0;
-static int16_t I_w = 0;
-static int16_t I_phase = 0; //max phase current
-
-// used for filtering
-static int32_t I_u_accum = 0;
-static int32_t I_v_accum = 0;
-static int32_t I_w_accum = 0;
 
 static uint32_t count = 0;     // incremented every loop, reset at 100Hz
 static uint16_t loop_freq = 0; // Hz, calculated at 100Hz using count
@@ -100,7 +77,11 @@ void encoder_loop() {
         HAL_GPIO_WritePin(GPIOF, MAG_NCS_Pin, 1);
 
         // angles represented in [0,32767] (~91 per degree)
-        m_angle = ((uint16_t)(p.spi_RX[0]) << 8) + p.spi_RX[1] + 16384;
+        m_angle_new = ((uint16_t)(p.spi_RX[0]) << 8) + p.spi_RX[1] + 16384;
+        m_angle = m_angle_accum >> MANGLE_FILT_LVL;
+		m_angle_accum = m_angle_accum - m_angle + m_angle_new;
+
+
         e_angle = (m_angle * PPAIRS - e_offset) & (32768 - 1); // convert to electrical angle and modulo
 
         if (m_angle_prev < 8192 && m_angle > 24576) { // detect angle wraparound and increment a revolution
