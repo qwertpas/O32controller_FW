@@ -22,7 +22,7 @@
 #define UART_ADDR 0x2
 
 #define SELECTED_MODE FOC_MODE //SIXSTEP, FOC, ENCODER
-#define PWM_FREQ 20000 //kHz
+#define PWM_FREQ 40000 //kHz
 
 // Motor parameters
 #define PPAIRS 7        // pole pairs
@@ -31,7 +31,7 @@
 /* ============= END CONFIG ================= */
 
 
-#define MAX_DUTY ((64e6/PWM_FREQ) / 2 - 1) //at PWM_FREQ=40kHz, MAX_DUTY=799
+#define MAX_DUTY (uint32_t)((64000000/PWM_FREQ) / 2 - 1) //at PWM_FREQ=40kHz, MAX_DUTY=799
 
 #define MAX_INT32 0x7FFFFFFF
 #define MIN_INT32 0x80000000 //used as the end char

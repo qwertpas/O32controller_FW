@@ -34,11 +34,11 @@
 
 #define KP_q 0
 #define KI_q 0
-#define KF_q (1<<24)
+#define KF_q (1<<23)
 
 #define D_min 0
-#define D_max MAX_DUTY
-#define D_mid (D_max/2)
+#define D_max 64 //replace with MAX_DUTY
+#define D_mid (D_max>>1)
 #define log2_V_per_D LOG2((1<<16)/D_max)  // rightshift amount to map voltage [-32768, 32768) to [0, D_max)
 
  
@@ -149,7 +149,7 @@ void foc_startup() {
     ENABLE_DRIVE;
 
     // move to step 0
-    TIM1->CCR1 = 20;
+    TIM1->CCR1 = MAX_DUTY/16;
     TIM1->CCR2 = 0;
     TIM1->CCR3 = 0;
 
@@ -307,15 +307,11 @@ void foc_loop() {
             TIM1->CCR1 = 0;
             TIM1->CCR2 = 0;
             TIM1->CCR3 = 0;
-        }else if(!reverse){ //don't know why switching the phases doesn't make it reverse
+        }else { //don't know why switching the phases doesn't make it reverse
             TIM1->CCR1 = D_u;
             TIM1->CCR2 = D_v;
             TIM1->CCR3 = D_w;
-        }else{
-            TIM1->CCR1 = D_u;
-            TIM1->CCR2 = D_w;
-            TIM1->CCR3 = D_v;
-        }   
+        }
     }
 
     if (p.uart_idle) {
@@ -342,7 +338,7 @@ void foc_loop() {
         if (p.uart_cmd[0] == CMD_SET_VOLTAGE) {
             reverse = (p.uart_cmd[1] >> 13) & 1;
             mag = reverse ? (~p.uart_cmd[1]) + 1 : p.uart_cmd[1]; // If negative, take the absolute value assuming two's complement
-            I_q_des = mag >> 2;
+            I_q_des = p.uart_cmd[1] >> 2;
         } else if (p.uart_cmd[0] == CMD_SET_CURRENT) {
             I_max = p.uart_cmd[1];
         } else if (p.uart_cmd[0] == CMD_SET_POSITION) {
@@ -359,20 +355,22 @@ void foc_loop() {
         // p.uart_TX[3] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
         // p.uart_TX[4] = MIN_INT8;
 
-        // p.uart_TX[0] = (uint8_t)(p.adc_vals[3] >> 7) & 0b01111111;
-        // p.uart_TX[1] = (uint8_t)(p.adc_vals[3] >> 0) & 0b01111111;
-        // p.uart_TX[2] = (uint8_t)(p.adc_vals[0] >> 7) & 0b01111111;
-        // p.uart_TX[3] = (uint8_t)(p.adc_vals[0] >> 0) & 0b01111111;
+        p.uart_TX[0] = (uint8_t)(I_q >> 7) & 0b01111111;
+        p.uart_TX[1] = (uint8_t)(I_q >> 0) & 0b01111111;
+        p.uart_TX[2] = (uint8_t)(I_d >> 7) & 0b01111111;
+        p.uart_TX[3] = (uint8_t)(I_d >> 0) & 0b01111111;
 
-        p.uart_TX[0] = (uint8_t)(V_u >> 9) & 0b01111111;
-        p.uart_TX[1] = (uint8_t)(V_u >> 2) & 0b01111111;
-        p.uart_TX[2] = (uint8_t)(V_v >> 9) & 0b01111111;
-        p.uart_TX[3] = (uint8_t)(V_v >> 2) & 0b01111111;
-        p.uart_TX[4] = (uint8_t)(V_w >> 9) & 0b01111111;
-        p.uart_TX[5] = (uint8_t)(V_w >> 2) & 0b01111111;
-        p.uart_TX[6] = (uint8_t)((D_u+1) >> 0) & 0b01111111;
-        p.uart_TX[7] = (uint8_t)((D_v+1) >> 0) & 0b01111111;
-        p.uart_TX[8] = (uint8_t)((D_w+1) >> 0) & 0b01111111;
+
+
+        // p.uart_TX[0] = (uint8_t)(V_u >> 9) & 0b01111111;
+        // p.uart_TX[1] = (uint8_t)(V_u >> 2) & 0b01111111;
+        // p.uart_TX[2] = (uint8_t)(V_v >> 9) & 0b01111111;
+        // p.uart_TX[3] = (uint8_t)(V_v >> 2) & 0b01111111;
+        // p.uart_TX[4] = (uint8_t)(V_w >> 9) & 0b01111111;
+        // p.uart_TX[5] = (uint8_t)(V_w >> 2) & 0b01111111;
+        // p.uart_TX[6] = (uint8_t)((D_u+1) >> 0) & 0b01111111;
+        // p.uart_TX[7] = (uint8_t)((D_v+1) >> 0) & 0b01111111;
+        // p.uart_TX[8] = (uint8_t)((D_w+1) >> 0) & 0b01111111;
 
         // uint8_t checksum = 0;
         // for(int i=0; i<8; i++){
@@ -380,7 +378,7 @@ void foc_loop() {
         // }
         // p.uart_TX[8] = (uint8_t)(checksum) & 0b01111111;
 
-        p.uart_TX[9] = MIN_INT8;
+        p.uart_TX[4] = MIN_INT8;
 
         
 
