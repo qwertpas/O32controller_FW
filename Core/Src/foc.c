@@ -15,6 +15,7 @@
 
 #define ADC_FILT_LVL 4
 #define DQ_FILT_LVL 8
+#define TEMP_FILT_LVL 8
 
 #define Q16_2_3 ((uint16_t)43691)     // (2/3) * 2^16
 #define Q16_SQRT3_2 ((uint16_t)56756) // (sqrt(3)/2) * 2^16
@@ -37,7 +38,7 @@
 #define KF_q (1<<23)
 
 #define D_min 0
-#define D_max 64 //replace with MAX_DUTY
+#define D_max (uint16_t)(128) //must be a power of 2
 #define D_mid (D_max>>1)
 #define log2_V_per_D LOG2((1<<16)/D_max)  // rightshift amount to map voltage [-32768, 32768) to [0, D_max)
 
@@ -106,6 +107,9 @@ static int32_t V_w = 0;
 static int16_t D_u = 0;
 static int16_t D_v = 0;
 static int16_t D_w = 0;
+
+static int16_t temp = 0;
+static int32_t temp_accum = 0;
 
 static uint32_t count = 0;     // incremented every loop, reset at 100Hz
 static uint16_t loop_freq = 0; // Hz, calculated at 100Hz using count
@@ -314,6 +318,14 @@ void foc_loop() {
         }
     }
 
+
+    // temp low pass filter
+    {
+        temp = temp_accum >> TEMP_FILT_LVL;
+        temp_accum = temp_accum - temp + p.adc_vals[4];
+    }
+
+
     if (p.uart_idle) {
 
         // clear the uart buffer
@@ -359,8 +371,8 @@ void foc_loop() {
         p.uart_TX[1] = (uint8_t)(I_q >> 0) & 0b01111111;
         p.uart_TX[2] = (uint8_t)(I_d >> 7) & 0b01111111;
         p.uart_TX[3] = (uint8_t)(I_d >> 0) & 0b01111111;
-
-
+        p.uart_TX[4] = (uint8_t)(temp >> 7) & 0b01111111;
+        p.uart_TX[5] = (uint8_t)(temp >> 0) & 0b01111111;
 
         // p.uart_TX[0] = (uint8_t)(V_u >> 9) & 0b01111111;
         // p.uart_TX[1] = (uint8_t)(V_u >> 2) & 0b01111111;

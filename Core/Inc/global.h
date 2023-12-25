@@ -22,7 +22,7 @@
 #define UART_ADDR 0x2
 
 #define SELECTED_MODE FOC_MODE //SIXSTEP, FOC, ENCODER
-#define PWM_FREQ 40000 //kHz
+#define PWM_FREQ 40000 //kHz     //20kHz is tiny bit more efficient
 
 // Motor parameters
 #define PPAIRS 7        // pole pairs
@@ -31,7 +31,7 @@
 /* ============= END CONFIG ================= */
 
 
-#define MAX_DUTY (uint32_t)((64000000/PWM_FREQ) / 2 - 1) //at PWM_FREQ=40kHz, MAX_DUTY=799
+#define MAX_DUTY (uint32_t)((64000000/PWM_FREQ) / 2 - 1) //at PWM_FREQ=40kHz, MAX_DUTY=799. For FOC this should be a power of 2
 
 #define MAX_INT32 0x7FFFFFFF
 #define MIN_INT32 0x80000000 //used as the end char
@@ -121,7 +121,13 @@ typedef struct {
     uint8_t uart_RX[UARTSIZE]; // receive from Teensy (may be out of order)
     int16_t uart_cmd[UARTSIZE]; //first byte is command, rest is data packed into 16 bits
 
-    /* Buffer for raw ADC readings */
+    /* 6 ADC channels in total:
+    * [0] ADC0: Phase V current
+    * [1] ADC3: Phase W current
+    * [2] ADC4: VBUS sense (5.12x voltage divider)
+    * [3] ADC9: Phase U current
+    * [4] TEMP
+    * [5] VREF              */
     uint16_t adc_vals[NBR_ADC];
 
     uint8_t spi_TX[2];
