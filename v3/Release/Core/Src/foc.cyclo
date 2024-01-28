@@ -1,0 +1,2 @@
+../Core/Src/foc.c:120:6:foc_startup	2
+../Core/Src/foc.c:185:6:foc_loop	19

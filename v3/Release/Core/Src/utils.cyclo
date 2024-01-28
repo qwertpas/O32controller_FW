@@ -1,0 +1,6 @@
+../Core/Src/utils.c:8:9:clip	3
+../Core/Src/utils.c:12:9:min3	4
+../Core/Src/utils.c:16:9:max3	4
+../Core/Src/utils.c:20:9:abs16	2
+../Core/Src/utils.c:25:9:abs32	1
+../Core/Src/utils.c:30:9:pad14	2

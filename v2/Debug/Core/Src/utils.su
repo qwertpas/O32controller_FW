@@ -1,0 +1,6 @@
+../Core/Src/utils.c:8:9:clip	24	static
+../Core/Src/utils.c:12:9:min3	24	static
+../Core/Src/utils.c:16:9:max3	24	static
+../Core/Src/utils.c:20:9:abs16	16	static
+../Core/Src/utils.c:25:9:abs32	16	static
+../Core/Src/utils.c:30:9:pad14	16	static

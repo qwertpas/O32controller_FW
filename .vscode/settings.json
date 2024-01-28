@@ -1,7 +1,7 @@
 {
-    "C_Cpp.errorSquiggles": "disabled",
     "files.associations": {
         "global.h": "c",
-        "stm32f0xx_hal.h": "c"
+        "foc.h": "c",
+        "utils.h": "c"
     }
 }
