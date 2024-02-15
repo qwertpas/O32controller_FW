@@ -149,11 +149,14 @@ typedef struct {
     uint8_t spi_RX[2];
 
     uint8_t print_flag;
-    uint8_t i2c_complete_flag;
     uint8_t uart_idle;
     uint8_t adc_conversion_flag;
 
     uint8_t uart_watchdog;
+
+    uint8_t uart_ready;
+    uint8_t uart_busy; 
+
 } PeripherialStruct;
 extern PeripherialStruct p;
 

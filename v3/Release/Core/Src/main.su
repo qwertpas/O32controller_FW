@@ -1,10 +1,9 @@
 ../Core/Src/main.c:64:5:__io_putchar	16	static
-../Core/Src/main.c:565:6:HAL_TIM_PeriodElapsedCallback	0	static
-../Core/Src/main.c:571:6:HAL_UARTEx_RxEventCallback	8	static
-../Core/Src/main.c:576:6:HAL_UART_RxCpltCallback	8	static
-../Core/Src/main.c:581:6:HAL_UART_TxCpltCallback	8	static
-../Core/Src/main.c:587:6:HAL_UART_ErrorCallback	32	static
-../Core/Src/main.c:599:6:HAL_ADC_ConvCpltCallback	0	static
-../Core/Src/main.c:613:6:Error_Handler	8	static,ignoring_inline_asm
-../Core/Src/main.c:166:6:SystemClock_Config	96	static
+../Core/Src/main.c:566:6:HAL_TIM_PeriodElapsedCallback	8	static
+../Core/Src/main.c:579:6:HAL_UARTEx_RxEventCallback	8	static
+../Core/Src/main.c:586:6:HAL_UART_TxCpltCallback	8	static
+../Core/Src/main.c:591:6:HAL_UART_ErrorCallback	8	static
+../Core/Src/main.c:613:6:HAL_ADC_ConvCpltCallback	0	static
+../Core/Src/main.c:627:6:Error_Handler	8	static,ignoring_inline_asm
+../Core/Src/main.c:167:6:SystemClock_Config	96	static
 ../Core/Src/main.c:80:5:main	184	static

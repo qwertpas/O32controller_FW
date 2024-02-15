@@ -324,12 +324,12 @@ void sixstep_loop() {
         p.uart_idle = 0;
     }
 
-    if (p.print_flag) { // 100Hz clock
+    if (p.print_flag) { // 1000Hz clock
 
-        rpm = ((cont_angle - cont_angle_prev) * 100 * 60) >> 15; // should be accurate within reasonable RPM range if 32-bit
+        rpm = ((cont_angle - cont_angle_prev) * 1000 * 60) >> 15; // should be accurate within reasonable RPM range if 32-bit
         cont_angle_prev = cont_angle;
 
-        loop_freq = count * 100;
+        loop_freq = count * 1000;
         count = 0;
 
         p.uart_watchdog++;
