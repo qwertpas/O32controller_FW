@@ -117,7 +117,7 @@ void sixstep_startup() {
     TIM1->CCR2 = 0;
     TIM1->CCR3 = 0;
 
-    HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
+   HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
 }
 
 void sixstep_loop() {
@@ -197,7 +197,7 @@ void sixstep_loop() {
         }
 
         duty_offsetted = clip(duty - duty_offset, 0, MAX_DUTY);
-        duty_offsetted = 200;
+        duty_offsetted = 50;
 
 		//apply duty to phases according to step
 		if (step == 0) {

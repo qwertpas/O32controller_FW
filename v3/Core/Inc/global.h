@@ -21,7 +21,7 @@
 /* ============= START CONFIG ================= */
 
 // 4-bit address
-#define UART_ADDR 0x7
+#define UART_ADDR 0x2
 
 #define SELECTED_MODE SIXSTEP_MODE //SIXSTEP, FOC, ENCODER
 #define PWM_FREQ 40000 //kHz     //20kHz is tiny bit more efficient
