@@ -568,18 +568,31 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     }
 }
 
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
+    RS485_SET_TX;
+    HAL_UART_Transmit_DMA(&huart1, p.uart_TX, UART_TX_SIZE); // DMA channel 4
+}
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) { // gets called before all bits finish
     p.uart_watchdog = 0;
+    HAL_GPIO_TogglePin(MAG2_CS_GPIO_Port, MAG2_CS_Pin);
 }
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
     RS485_SET_RX;
-    HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
+    HAL_UARTEx_ReceiveToIdle_IT(&huart1, p.uart_RX, UART_RX_SIZE);
+    // HAL_UART_Receive_IT(&huart1, p.uart_RX, UART_RX_SIZE);
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) { // receive overrun error happens once in a while, just restart RX
     RS485_SET_RX;
-    HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
+    // HAL_UART_Receive_IT(&huart1, p.uart_RX, UART_RX_SIZE);
+// clear the uart buffer
+    uint8_t temp_buffer[UARTSIZE];
+    while (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE)) {
+        HAL_UART_Receive(&huart1, temp_buffer, 1, 1);
+    }
+    HAL_UARTEx_ReceiveToIdle_IT(&huart1, p.uart_RX, UART_RX_SIZE);
     LED_RED;
 }
 

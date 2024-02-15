@@ -207,18 +207,24 @@ void SPI1_IRQHandler(void) {
  * @brief This function handles USART1 global interrupt / USART1 wake-up interrupt through EXTI line 25.
  */
 void USART1_IRQHandler(void) {
-  /* USER CODE BEGIN USART1_IRQn 0 */
+    /* USER CODE BEGIN USART1_IRQn 0 */
 
-  /* USER CODE END USART1_IRQn 0 */
-  HAL_UART_IRQHandler(&huart1);
-  /* USER CODE BEGIN USART1_IRQn 1 */
+    /* USER CODE END USART1_IRQn 0 */
+    HAL_UART_IRQHandler(&huart1);
+    /* USER CODE BEGIN USART1_IRQn 1 */
 
-  if (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_IDLE)) {
-    __HAL_UART_CLEAR_IDLEFLAG(&huart1);
-    p.uart_idle = 1;
-  }
 
-  /* USER CODE END USART1_IRQn 1 */
+//    if (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RWU)) {
+        // USART1 wake-up interrupt occurred
+//    }
+
+    if (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_IDLE)) {
+        __HAL_UART_CLEAR_IDLEFLAG(&huart1);
+        p.uart_idle = 1;
+
+    }
+
+    /* USER CODE END USART1_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

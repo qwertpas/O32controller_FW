@@ -117,7 +117,9 @@ void sixstep_startup() {
     TIM1->CCR2 = 0;
     TIM1->CCR3 = 0;
 
-   HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
+//    HAL_UART_Receive_IT(&huart1, p.uart_RX, UART_RX_SIZE);
+   HAL_UARTEx_ReceiveToIdle_IT(&huart1, p.uart_RX, UART_RX_SIZE);
+
 }
 
 void sixstep_loop() {
@@ -232,15 +234,20 @@ void sixstep_loop() {
 		}  
     }
 
+    p.uart_TX[0] = p.uart_RX[0];
+    p.uart_TX[1] = p.uart_RX[1];
+    p.uart_TX[2] = p.uart_RX[2];
+
+
 
 
     if (p.uart_idle) {
 
-        // clear the uart buffer
-        uint8_t temp_buffer[UARTSIZE];
-        while (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE)) {
-            HAL_UART_Receive(&huart1, temp_buffer, 1, 1);
-        }
+        // // clear the uart buffer
+        // uint8_t temp_buffer[UARTSIZE];
+        // while (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE)) {
+        //     HAL_UART_Receive(&huart1, temp_buffer, 1, 1);
+        // }
 
         // check which of 3 bytes is the cmd and concat 14 data bytes into int16_t (signed)
         if (p.uart_RX[0] & 0x80) {
@@ -285,18 +292,18 @@ void sixstep_loop() {
         // p.uart_TX[2] = (uint8_t)(I_phase >> 7) & 0b01111111;
         // p.uart_TX[3] = (uint8_t)(I_phase >> 0) & 0b01111111;
 
-        p.uart_TX[0] = (uint8_t)(I_phase >> 7) & 0b01111111;
-        p.uart_TX[1] = (uint8_t)(I_phase >> 0) & 0b01111111;
-        p.uart_TX[2] = (uint8_t)(duty >> 7) & 0b01111111;
-        p.uart_TX[3] = (uint8_t)(duty >> 0) & 0b01111111;
-        p.uart_TX[4] = (uint8_t)(cont_angle >> 7) & 0b01111111;
-        p.uart_TX[5] = (uint8_t)(cont_angle >> 0) & 0b01111111;
-
-        uint8_t checksum = 0;
-        for(int i=0; i<6; i++){
-            checksum += p.uart_TX[i];
-        }
-        p.uart_TX[6] = (uint8_t)(checksum) & 0b01111111;
+//        p.uart_TX[0] = (uint8_t)(I_phase >> 7) & 0b01111111;
+//        p.uart_TX[1] = (uint8_t)(I_phase >> 0) & 0b01111111;
+//        p.uart_TX[2] = (uint8_t)(duty >> 7) & 0b01111111;
+//        p.uart_TX[3] = (uint8_t)(duty >> 0) & 0b01111111;
+//        p.uart_TX[4] = (uint8_t)(cont_angle >> 7) & 0b01111111;
+//        p.uart_TX[5] = (uint8_t)(cont_angle >> 0) & 0b01111111;
+//
+//        uint8_t checksum = 0;
+//        for(int i=0; i<6; i++){
+//            checksum += p.uart_TX[i];
+//        }
+//        p.uart_TX[6] = (uint8_t)(checksum) & 0b01111111;
 
         // p.uart_TX[4] = (uint8_t)(I_d_filt >> 7) & 0b01111111;
         // p.uart_TX[5] = (uint8_t)(I_d_filt >> 0) & 0b01111111;
@@ -304,12 +311,16 @@ void sixstep_loop() {
         // p.uart_TX[7] = (uint8_t)(I_q_filt >> 0) & 0b01111111;
         // p.uart_TX[2] = (uint8_t)(cont_angle >> (encoder_res + 7)) & 0b01111111;
         // p.uart_TX[3] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
-        p.uart_TX[7] = MIN_INT8;
+//        p.uart_TX[2] = MIN_INT8;
+
+		p.uart_TX[0] = p.uart_RX[0];
+		p.uart_TX[1] = p.uart_RX[1];
+		p.uart_TX[2] = p.uart_RX[2];
 
         
 
-        RS485_SET_TX;
-        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 8); // DMA channel 4
+        // RS485_SET_TX;
+        // HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 3); // DMA channel 4
         p.uart_idle = 0;
     }
 

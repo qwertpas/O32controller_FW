@@ -42,6 +42,8 @@
 /* Size of Transmission and receive buffer */
 #define I2CSIZE 2
 #define UARTSIZE 10
+#define UART_RX_SIZE 3
+#define UART_TX_SIZE 3
 
 /* 7 ADC channels in total:
     * [0] ADC0: Phase V current
