@@ -69,6 +69,11 @@ void sixstep_startup() {
     HAL_Delay(1);
     HAL_ADCEx_Calibration_Start(&hadc); // seems like this uses VREFINT_CAL
 
+    HAL_TIM_Base_Start(&htim1); //PWM and ADC timer
+    TIM1->EGR = TIM_EGR_UG;
+    htim1.Instance->RCR = 1; //timer interrupts for center of peak and trough, ignore troughs
+    TIM1->EGR = TIM_EGR_UG; //update timer config
+
 
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
     HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1); // turn on complementary channel
@@ -78,7 +83,7 @@ void sixstep_startup() {
     HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3); // turn on complementary channel
 
     
-    HAL_TIM_Base_Start_IT(&htim2); // 100Hz timer for printing
+    HAL_TIM_Base_Start_IT(&htim2); //slower 1kHz timer
 
     TIM1->CCR1 = 0;
     TIM1->CCR2 = 0;
@@ -94,7 +99,7 @@ void sixstep_startup() {
     ENABLE_DRIVE;
 
     // move to step 0
-    TIM1->CCR1 = 20;
+    TIM1->CCR1 = MAX_DUTY/16;
     TIM1->CCR2 = 0;
     TIM1->CCR3 = 0;
 
@@ -106,7 +111,7 @@ void sixstep_startup() {
         HAL_GPIO_WritePin(MAG1_CS_GPIO_Port, MAG1_CS_Pin, 1);
 
 
-        HAL_ADC_Start_DMA(&hadc, (uint32_t *) p.adc_vals, NBR_ADC); // start the adc in dma mode
+        // HAL_ADC_Start_DMA(&hadc, (uint32_t *) p.adc_vals, NBR_ADC); // start the adc in dma mode
 
         HAL_UART_Receive(&huart1, p.uart_RX, 1, 1);
     }
@@ -122,6 +127,8 @@ void sixstep_startup() {
 
 //    HAL_UART_Receive_IT(&huart1, p.uart_RX, UART_RX_SIZE);
    HAL_UARTEx_ReceiveToIdle_IT(&huart1, p.uart_RX, UART_RX_SIZE);
+
+   p.adc_vals[0] = 69;
 
 }
 
@@ -151,17 +158,20 @@ void sixstep_loop() {
 
 	//read currents from ADCs and low pass filter
 	{
+//        HAL_StatusTypeDef status = HAL_ADC_Start_DMA(&hadc, (uint32_t *)p.adc_vals, 5);
+        
+
 		// filter ADC values (https://stackoverflow.com/questions/38918530/simple-low-pass-filter-in-fixed-point)
 		// phase currents are in adc units [-2048, 2047] (1 bit sign, 11 bit value)
 		// to get current in milliamps, multiply by UAMP_PER_ADC then divide by 1000
 		I_u = I_u_accum >> ADC_FILT_LVL;
-		I_u_accum = I_u_accum - I_u + (p.adc_vals[3] - adc_U_offset);
+		I_u_accum = I_u_accum - I_u + (p.adc_vals[4] - adc_U_offset);
 
 		I_v = I_v_accum >> ADC_FILT_LVL;
 		I_v_accum = I_v_accum - I_v + (p.adc_vals[0] - adc_V_offset);
 
 		I_w = I_w_accum >> ADC_FILT_LVL;
-		I_w_accum = I_w_accum - I_w + (p.adc_vals[1] - adc_W_offset);
+		I_w_accum = I_w_accum - I_w + (p.adc_vals[2] - adc_W_offset);
 
 		I_phase = abs16(I_u);
 		if(abs16(I_v) > I_phase) I_phase = abs16(I_v);
@@ -192,7 +202,7 @@ void sixstep_loop() {
 
     // six-step commutation using e_angle, reverse, duty
     {
-        
+
         // calculate step from e_angle
         if (INVERT_MAG) e_angle *= -1;
         if (reverse) {
@@ -258,64 +268,19 @@ void sixstep_loop() {
             encoder_res = p.uart_cmd[1];
         }
 
-        p.uart_TX[0] = p.uart_RX[0];
-        p.uart_TX[1] = p.uart_RX[1];
-        p.uart_TX[2] = p.uart_RX[2];
-        p.uart_TX[3] = MIN_INT8;
+        p.uart_TX[0] = (uint8_t)(cont_angle >> (encoder_res + 7)) & 0b01111111;
+        p.uart_TX[1] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
+        // p.uart_TX[2] = (uint8_t)(I_phase >> 7) & 0b01111111;
+        // p.uart_TX[3] = (uint8_t)(I_phase >> 0) & 0b01111111;
+        p.uart_TX[2] = (uint8_t)(p.adc_vals[0] >> 7) & 0b01111111;
+        p.uart_TX[3] = (uint8_t)(p.adc_vals[0] >> 0) & 0b01111111;
+        p.uart_TX[4] = MIN_INT8;
 
         RS485_SET_TX;
-        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 4);
+        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 5);
     }
 
-    // p.uart_TX[0] = (uint8_t)(p.uart_cmd[1] >> 7) & 0b01111111;
-    // p.uart_TX[1] = (uint8_t)(p.uart_cmd[1] >> 0) & 0b01111111;
-    // p.uart_TX[2] = (uint8_t)(cont_angle >> (encoder_res + 7)) & 0b01111111;
-    // p.uart_TX[3] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
-    // p.uart_TX[4] = MIN_INT8;
 
-    // p.uart_TX[0] = (uint8_t)(p.adc_vals[3] >> 7) & 0b01111111;
-    // p.uart_TX[1] = (uint8_t)(p.adc_vals[3] >> 0) & 0b01111111;
-    // p.uart_TX[2] = (uint8_t)(p.adc_vals[0] >> 7) & 0b01111111;
-    // p.uart_TX[3] = (uint8_t)(p.adc_vals[0] >> 0) & 0b01111111;
-
-    // p.uart_TX[0] = (uint8_t)(cont_angle >> (encoder_res + 7)) & 0b01111111;
-    // p.uart_TX[1] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
-    // p.uart_TX[2] = (uint8_t)(I_phase >> 7) & 0b01111111;
-    // p.uart_TX[3] = (uint8_t)(I_phase >> 0) & 0b01111111;
-
-//        p.uart_TX[0] = (uint8_t)(I_phase >> 7) & 0b01111111;
-//        p.uart_TX[1] = (uint8_t)(I_phase >> 0) & 0b01111111;
-//        p.uart_TX[2] = (uint8_t)(duty >> 7) & 0b01111111;
-//        p.uart_TX[3] = (uint8_t)(duty >> 0) & 0b01111111;
-//        p.uart_TX[4] = (uint8_t)(cont_angle >> 7) & 0b01111111;
-//        p.uart_TX[5] = (uint8_t)(cont_angle >> 0) & 0b01111111;
-//
-//        uint8_t checksum = 0;
-//        for(int i=0; i<6; i++){
-//            checksum += p.uart_TX[i];
-//        }
-//        p.uart_TX[6] = (uint8_t)(checksum) & 0b01111111;
-
-    // p.uart_TX[4] = (uint8_t)(I_d_filt >> 7) & 0b01111111;
-    // p.uart_TX[5] = (uint8_t)(I_d_filt >> 0) & 0b01111111;
-    // p.uart_TX[6] = (uint8_t)(I_q_filt >> 7) & 0b01111111;
-    // p.uart_TX[7] = (uint8_t)(I_q_filt >> 0) & 0b01111111;
-    // p.uart_TX[2] = (uint8_t)(cont_angle >> (encoder_res + 7)) & 0b01111111;
-    // p.uart_TX[3] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
-//        p.uart_TX[2] = MIN_INT8;
-
-    
-    
-
-    // if (p.clock_1khz_flag) {
-
-    //     rpm = ((cont_angle - cont_angle_prev) * 1000 * 60) >> 15; // should be accurate within reasonable RPM range if 32-bit
-    //     cont_angle_prev = cont_angle;
-
-    //     loop_freq = count * 1000;
-    //     count = 0;
-
-    // }
     LED_GREEN;
 }
 

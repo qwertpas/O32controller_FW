@@ -24,7 +24,7 @@
 #define UART_ADDR 0x2
 
 #define SELECTED_MODE SIXSTEP_MODE //SIXSTEP, FOC, ENCODER
-#define PWM_FREQ 40000 //kHz     //20kHz is tiny bit more efficient
+#define PWM_FREQ 20000 //kHz     //20kHz is tiny bit more efficient
 
 // Motor parameters
 #define PPAIRS 7        // pole pairs

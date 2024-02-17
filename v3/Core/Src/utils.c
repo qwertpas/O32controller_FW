@@ -18,8 +18,7 @@ int32_t max3(int32_t x, int32_t y, int32_t z){
 }
 
 int16_t abs16(int16_t val) {
-    if(val < 0) return -val;
-    else return val;
+    return val<0 ? -val : val;
 }
 
 int32_t abs32(int32_t val) {

@@ -170,7 +170,12 @@ void TIM1_BRK_UP_TRG_COM_IRQHandler(void) {
     //  LED_RED;
     //  LED_GREEN;
 
-    HAL_ADC_Start_DMA(&hadc, (uint32_t *)p.adc_vals, NBR_ADC);
+    HAL_StatusTypeDef status = HAL_ADC_Start_DMA(&hadc, (uint32_t *)p.adc_vals, 5);
+//	HAL_ADC_Start_IT(&hadc);
+
+    // p.adc_vals[0] = HAL_ADC_GetValue(&hadc);
+
+    // HAL_GPIO_TogglePin(MAG2_CS_GPIO_Port, MAG2_CS_Pin);
     // LED_RED;
     // LED_GREEN;
 

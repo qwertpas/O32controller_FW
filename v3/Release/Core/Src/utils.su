@@ -2,5 +2,5 @@
 ../Core/Src/utils.c:12:9:min3	0	static
 ../Core/Src/utils.c:16:9:max3	0	static
 ../Core/Src/utils.c:20:9:abs16	0	static
-../Core/Src/utils.c:25:9:abs32	0	static
-../Core/Src/utils.c:30:9:pad14	0	static
+../Core/Src/utils.c:24:9:abs32	0	static
+../Core/Src/utils.c:29:9:pad14	0	static

@@ -98,6 +98,7 @@ int main(void) {
     /* Initialize all configured peripherals */
     MX_GPIO_Init();
     MX_DMA_Init();
+    HAL_Delay(10);
     MX_ADC_Init();
     MX_SPI1_Init();
     MX_TIM1_Init();
@@ -187,7 +188,7 @@ void SystemClock_Config(void) {
     RCC_OscInitStruct.HSI14CalibrationValue = 16;
     RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
     RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-    RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL12;
+    RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL16;
     RCC_OscInitStruct.PLL.PREDIV = RCC_PREDIV_DIV1;
     if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
         Error_Handler();
@@ -233,13 +234,14 @@ static void MX_ADC_Init(void) {
     hadc.Init.Resolution = ADC_RESOLUTION_12B;
     hadc.Init.DataAlign = ADC_DATAALIGN_RIGHT;
     hadc.Init.ScanConvMode = ADC_SCAN_DIRECTION_FORWARD;
-    hadc.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+    hadc.Init.EOCSelection = ADC_EOC_SEQ_CONV;
     hadc.Init.LowPowerAutoWait = DISABLE;
     hadc.Init.LowPowerAutoPowerOff = DISABLE;
     hadc.Init.ContinuousConvMode = DISABLE;
     hadc.Init.DiscontinuousConvMode = DISABLE;
     hadc.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-    hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+//    hadc.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T1_TRGO;
+//    hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
     hadc.Init.DMAContinuousRequests = DISABLE;
     hadc.Init.Overrun = ADC_OVR_DATA_PRESERVED;
     if (HAL_ADC_Init(&hadc) != HAL_OK) {
@@ -359,11 +361,11 @@ static void MX_TIM1_Init(void) {
 
     /* USER CODE END TIM1_Init 1 */
     htim1.Instance = TIM1;
-    htim1.Init.Prescaler = 2;
-    htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-    htim1.Init.Period = 512;
+    htim1.Init.Prescaler = 0;
+    htim1.Init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED1;
+    htim1.Init.Period = MAX_DUTY;
     htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-    htim1.Init.RepetitionCounter = 0;
+    htim1.Init.RepetitionCounter = 0; // start with 0, then set RCR1 to create update event every other time on low edge
     htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
     if (HAL_TIM_Base_Init(&htim1) != HAL_OK) {
         Error_Handler();
@@ -407,7 +409,7 @@ static void MX_TIM1_Init(void) {
     sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
     sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
     sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-    sBreakDeadTimeConfig.DeadTime = 10;
+    sBreakDeadTimeConfig.DeadTime = 20;
     sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
     sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
     sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
@@ -419,8 +421,7 @@ static void MX_TIM1_Init(void) {
     HAL_TIM_Base_Start_IT(&htim1); // Start TIM1 and enable the update interrupt
 
     HAL_NVIC_SetPriority(TIM1_BRK_UP_TRG_COM_IRQn, 0, 0); // Set the priority for TIM1 global interrupt
-                                                          //    HAL_NVIC_EnableIRQ(TIM1_BRK_UP_TRG_COM_IRQn); // Enable the TIM1 global interrupt
-
+    HAL_NVIC_EnableIRQ(TIM1_BRK_UP_TRG_COM_IRQn); // Enable the TIM1 global interrupt
     /* USER CODE END TIM1_Init 2 */
     HAL_TIM_MspPostInit(&htim1);
 }
@@ -480,7 +481,8 @@ static void MX_USART1_UART_Init(void) {
 
     /* USER CODE END USART1_Init 1 */
     huart1.Instance = USART1;
-    huart1.Init.BaudRate = 115200;
+    // huart1.Init.BaudRate = 115200;
+    huart1.Init.BaudRate = 1000000;
     huart1.Init.WordLength = UART_WORDLENGTH_8B;
     huart1.Init.StopBits = UART_STOPBITS_1;
     huart1.Init.Parity = UART_PARITY_NONE;
@@ -606,8 +608,8 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) { // shouldn't happen but
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
     if (hadc->Instance == ADC1) {
-        // End of conversion actions
         //        LED_GREEN;
+        HAL_GPIO_TogglePin(MAG2_CS_GPIO_Port, MAG2_CS_Pin);
         p.adc_conversion_flag = 1; // allow main loop to continiue
     }
 }
