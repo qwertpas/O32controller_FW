@@ -150,14 +150,30 @@ int main(void) {
             break;
         }
 
+
         if(p.clock_1khz_flag){ //watchdog checks if UART has been updated
+            p.clock_1khz_flag = 0;
+
+        	switch (SELECTED_MODE) {
+			case SIXSTEP_MODE:
+				sixstep_slowloop();
+				break;
+			case FOC_MODE:
+                foc_slowloop();
+				break;
+			case ENCODER_MODE:
+				break;
+			default:
+				break;
+			}
+
+
             p.uart_watchdog++;
             if (p.uart_watchdog >= UART_WATCHDOG_MS) {
                 p.uart_watchdog = UART_WATCHDOG_MS;
                 DISABLE_DRIVE;
                 LED_RED;
             }
-            p.clock_1khz_flag = 0;
         }
         
 

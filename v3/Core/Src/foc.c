@@ -10,6 +10,7 @@
 #include "utils.h"
 #include <math.h>
 #include "stm32f031x6.h"
+#include "ntc.h"
 
 
 #define ADC_PER_VOLT 1241 // 4095/3.3
@@ -117,7 +118,7 @@ static int32_t temp_accum = 0;
 static uint32_t count = 0;     // incremented every loop, reset at 100Hz
 static uint16_t loop_freq = 0; // Hz, calculated at 100Hz using count
 
-static uint8_t uart_watchdog = 0;
+static uint8_t temperature = 0; //ºC from NTC lookup table
 
 
 void foc_startup() {
@@ -168,7 +169,7 @@ void foc_startup() {
         HAL_SPI_TransmitReceive(&hspi1, p.spi_TX, p.spi_RX, 2, HAL_MAX_DELAY);
         HAL_GPIO_WritePin(MAG1_CS_GPIO_Port, MAG1_CS_Pin, 1);
 
-        // HAL_ADC_Start_DMA(&hadc, (uint32_t *)p.adc_vals, NBR_ADC); // start the adc in dma mode
+        HAL_ADC_Start_DMA(&hadc, (uint32_t *)p.adc_vals, NBR_ADC); // start the adc in dma mode
 
         HAL_UART_Receive(&huart1, p.uart_RX, 1, 1);
     }
@@ -191,10 +192,6 @@ void foc_loop() {
     p.adc_conversion_flag = 0;
 
     HAL_GPIO_TogglePin(MAG2_CS_GPIO_Port, MAG2_CS_Pin);
-
-
-    // LED_RED;
-    // LED_GREEN;
 
     count++;
 
@@ -357,38 +354,24 @@ void foc_loop() {
         p.uart_TX[1] = (uint8_t)(I_q >> 0) & 0b01111111;
         p.uart_TX[2] = (uint8_t)(I_d >> 7) & 0b01111111;
         p.uart_TX[3] = (uint8_t)(I_d >> 0) & 0b01111111;
-        // p.uart_TX[4] = (uint8_t)(temp >> 7) & 0b01111111;
-        // p.uart_TX[5] = (uint8_t)(temp >> 0) & 0b01111111;
+
+        p.uart_TX[4] = (uint8_t)(temperature >> 0) & 0b01111111;
 
 
-
-        p.uart_TX[4] = MIN_INT8;
+        p.uart_TX[5] = MIN_INT8;
 
         RS485_SET_TX;
-        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 5);
+        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 6);
     }
 
-    // if (p.clock_1khz_flag) {
+
+    LED_GREEN;
+}
+
+void foc_slowloop(){
+    temperature = ntc_lut[(p.adc_vals[1]-121)>>5];
 
     //     rpm = ((cont_angle - cont_angle_prev) * 1000 * 60) >> 15; // should be accurate within reasonable RPM range if 32-bit
     //     cont_angle_prev = cont_angle;
 
-    //     loop_freq = count * 100;
-    //     count = 0;
-
-    //     uart_watchdog++;
-    //     if (uart_watchdog > 5) {
-    //         uart_watchdog = 5;
-    //     }
-
-    //     // uint8_t print_TX[50];
-    //     // sprintf((char*) print_TX, " freq: %d\n I_d_filt: %d\n I_q_filt: %d\n \t", loop_freq, I_d_filt, I_q_filt);
-    //     // RS485_SET_TX;
-    //     // HAL_UART_Transmit_DMA(&huart1, print_TX, 20);
-
-    //     p.clock_1khz_flag = 0;
-    // }
-    
-    LED_GREEN;
 }
-

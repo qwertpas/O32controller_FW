@@ -16,6 +16,7 @@
 
 void sixstep_startup();
 void sixstep_loop();
+void sixstep_slowloop();
 
 
 

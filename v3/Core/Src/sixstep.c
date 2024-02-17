@@ -9,6 +9,7 @@
 #include "comdef.h"
 #include "utils.h"
 #include "sixstep.h"
+#include "ntc.h"
 
 
 
@@ -61,6 +62,8 @@ static int32_t I_w_accum = 0;
 
 static uint32_t count = 0;     // incremented every loop, reset at 100Hz
 static uint16_t loop_freq = 0; // Hz, calculated at 100Hz using count
+
+static uint8_t temperature = 0;
 
 
 void sixstep_startup() {
@@ -270,15 +273,17 @@ void sixstep_loop() {
         // p.uart_TX[3] = (uint8_t)(I_phase >> 0) & 0b01111111;
         p.uart_TX[2] = (uint8_t)(I_phase >> 7) & 0b01111111;
         p.uart_TX[3] = (uint8_t)(I_phase >> 0) & 0b01111111;
-        p.uart_TX[4] = MIN_INT8;
+        p.uart_TX[4] = (uint8_t)(temperature >> 0) & 0b01111111;
+        p.uart_TX[5] = MIN_INT8;
 
         RS485_SET_TX;
-        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 5);
+        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 6);
     }
 
 
     LED_GREEN;
 }
 
-
-
+void sixstep_slowloop(){
+    temperature = ntc_lut[(p.adc_vals[1]-121)>>5];
+}

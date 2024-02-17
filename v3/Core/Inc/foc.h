@@ -16,6 +16,7 @@
 
 void foc_startup();
 void foc_loop();
+void foc_slowloop();
 
 
 //sine wave with 256 values in [-32768,32767]

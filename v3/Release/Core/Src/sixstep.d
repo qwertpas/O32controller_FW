@@ -33,7 +33,8 @@ Core/Src/sixstep.o: ../Core/Src/sixstep.c ../Core/Inc/global.h \
  ../Drivers/STM32F0xx_HAL_Driver/Inc/stm32f0xx_hal_uart.h \
  ../Drivers/STM32F0xx_HAL_Driver/Inc/stm32f0xx_hal_uart_ex.h \
  ../Core/Inc/comdef.h ../Core/Inc/utils.h ../Core/Inc/sixstep.h \
- ../Drivers/CMSIS/Device/ST/STM32F0xx/Include/stm32f031x6.h
+ ../Drivers/CMSIS/Device/ST/STM32F0xx/Include/stm32f031x6.h \
+ ../Core/Inc/ntc.h ../Core/Inc/global.h
 ../Core/Inc/global.h:
 ../Drivers/STM32F0xx_HAL_Driver/Inc/stm32f0xx_hal.h:
 ../Core/Inc/stm32f0xx_hal_conf.h:
@@ -72,3 +73,5 @@ Core/Src/sixstep.o: ../Core/Src/sixstep.c ../Core/Inc/global.h \
 ../Core/Inc/utils.h:
 ../Core/Inc/sixstep.h:
 ../Drivers/CMSIS/Device/ST/STM32F0xx/Include/stm32f031x6.h:
+../Core/Inc/ntc.h:
+../Core/Inc/global.h:
