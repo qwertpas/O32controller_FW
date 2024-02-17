@@ -149,6 +149,17 @@ int main(void) {
             break;
         }
 
+        if(p.clock_1khz_flag){ //watchdog checks if UART has been updated
+            p.uart_watchdog++;
+            if (p.uart_watchdog >= UART_WATCHDOG_MS) {
+                p.uart_watchdog = UART_WATCHDOG_MS;
+                DISABLE_DRIVE;
+                LED_RED;
+            }
+            p.clock_1khz_flag = 0;
+        }
+        
+
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */
@@ -434,7 +445,7 @@ static void MX_TIM2_Init(void) {
     htim2.Instance = TIM2;
     htim2.Init.Prescaler = 63;
     htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-    htim2.Init.Period = 499; //2kHz clock
+    htim2.Init.Period = 999; //100Hz clock
     htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
     htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
     if (HAL_TIM_Base_Init(&htim2) != HAL_OK) {
@@ -561,17 +572,19 @@ static void MX_GPIO_Init(void) {
 
 // Callback whenever a timer rolls over
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-    if (htim == &htim2) { // 2000Hz 
+    if (htim == &htim2) {
+        p.clock_1khz_flag = 1;
     }
 }
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
     p.uart_received_flag = 1; //commutation loop will read and clear
-	RS485_SET_TX;
-    HAL_UART_Transmit_DMA(&huart1, p.uart_TX, UART_TX_SIZE); // DMA channel 4
-    //maybe add a check if uart_TX has been completely written to, but seems fine for now
-}
 
+    if(p.uart_watchdog >= UART_WATCHDOG_MS){ //if watchdog has disabled motor, enable it again
+        ENABLE_DRIVE;
+    }
+    p.uart_watchdog = 0; //resets watchdog
+}
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
     RS485_SET_RX;

@@ -146,7 +146,7 @@ void encoder_loop() {
         // p.uart_txready_flag = 1;
     }
 
-    if (p.print_flag) { // 100Hz clock
+    if (p.clock_1khz_flag) { // 100Hz clock
 
         rpm = ((cont_angle - cont_angle_prev) * 100 * 60) >> 15; // should be accurate within reasonable RPM range if 32-bit
         cont_angle_prev = cont_angle;
@@ -160,7 +160,7 @@ void encoder_loop() {
             // duty = 0;
         }
 
-        p.print_flag = 0;
+        p.clock_1khz_flag = 0;
     }
     LED_GREEN;
 }

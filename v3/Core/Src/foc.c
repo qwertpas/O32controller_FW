@@ -391,7 +391,7 @@ void foc_loop() {
         p.uart_TX[4] = MIN_INT8;
     }
 
-    if (p.print_flag) { // 100Hz clock
+    if (p.clock_1khz_flag) {
 
         rpm = ((cont_angle - cont_angle_prev) * 100 * 60) >> 15; // should be accurate within reasonable RPM range if 32-bit
         cont_angle_prev = cont_angle;
@@ -409,7 +409,7 @@ void foc_loop() {
         // RS485_SET_TX;
         // HAL_UART_Transmit_DMA(&huart1, print_TX, 20);
 
-        p.print_flag = 0;
+        p.clock_1khz_flag = 0;
     }
     // LED_GREEN;
 }

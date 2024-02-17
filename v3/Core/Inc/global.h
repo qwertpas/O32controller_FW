@@ -43,7 +43,8 @@
 #define I2CSIZE 2
 #define UARTSIZE 10
 #define UART_RX_SIZE 3
-#define UART_TX_SIZE 3
+
+#define UART_WATCHDOG_MS 100 //after this many milliseconds without receiving UART the motor will disable
 
 /* 7 ADC channels in total:
     * [0] ADC0: Phase V current
@@ -148,7 +149,7 @@ typedef struct {
     uint8_t spi_TX[2];
     uint8_t spi_RX[2];
 
-    uint8_t print_flag;
+    uint8_t clock_1khz_flag;
     uint8_t adc_conversion_flag;
 
     uint8_t uart_watchdog;

@@ -202,7 +202,7 @@ void sixstep_loop() {
         }
 
         duty_offsetted = clip(duty - duty_offset, 0, MAX_DUTY);
-        duty_offsetted = 50;
+        duty_offsetted = duty;
 
 		//apply duty to phases according to step
 		if (step == 0) {
@@ -261,6 +261,10 @@ void sixstep_loop() {
         p.uart_TX[0] = p.uart_RX[0];
         p.uart_TX[1] = p.uart_RX[1];
         p.uart_TX[2] = p.uart_RX[2];
+        p.uart_TX[3] = MIN_INT8;
+
+        RS485_SET_TX;
+        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 4);
     }
 
     // p.uart_TX[0] = (uint8_t)(p.uart_cmd[1] >> 7) & 0b01111111;
@@ -303,22 +307,15 @@ void sixstep_loop() {
     
     
 
-    if (p.print_flag) { // 100Hz clock
+    // if (p.clock_1khz_flag) {
 
-        rpm = ((cont_angle - cont_angle_prev) * 1000 * 60) >> 15; // should be accurate within reasonable RPM range if 32-bit
-        cont_angle_prev = cont_angle;
+    //     rpm = ((cont_angle - cont_angle_prev) * 1000 * 60) >> 15; // should be accurate within reasonable RPM range if 32-bit
+    //     cont_angle_prev = cont_angle;
 
-        loop_freq = count * 1000;
-        count = 0;
+    //     loop_freq = count * 1000;
+    //     count = 0;
 
-        p.uart_watchdog++;
-        if (p.uart_watchdog > 5) {
-            p.uart_watchdog = 5;
-            // duty = 0;
-        }
-
-        p.print_flag = 0;
-    }
+    // }
     LED_GREEN;
 }
 
