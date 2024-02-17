@@ -8,8 +8,8 @@
 #ifndef INC_SIXSTEP_H_
 #define INC_SIXSTEP_H_
 
-#include "global.h"
-
+#include <stdint.h>
+#include "stm32f031x6.h"
 #include <stdio.h>
 #include <string.h>
 

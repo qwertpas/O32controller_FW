@@ -213,17 +213,6 @@ void USART1_IRQHandler(void) {
     HAL_UART_IRQHandler(&huart1);
     /* USER CODE BEGIN USART1_IRQn 1 */
 
-    //RXNE flag becomes true when there is a double send
-//    if (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE)) {
-//    	HAL_GPIO_TogglePin(MAG2_CS_GPIO_Port, MAG2_CS_Pin);
-//    }
-
-    if (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_IDLE)) { //only runs before the first UARTEx recv until idle
-        __HAL_UART_CLEAR_IDLEFLAG(&huart1);
-        // p.uart_idle = 1;
-
-    }
-
     /* USER CODE END USART1_IRQn 1 */
 }
 

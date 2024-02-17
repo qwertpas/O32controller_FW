@@ -7,12 +7,9 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "global.h"
-
 #include "encoder.h"
 #include "foc.h"
 #include "sixstep.h"
-
-#include <stdio.h>
 
 /* USER CODE END Includes */
 
@@ -486,7 +483,7 @@ static void MX_USART1_UART_Init(void) {
     }
     /* USER CODE BEGIN USART1_Init 2 */
 
-    __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE); // enable idle line interrupt
+    // __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE); // enable idle line interrupt (make sure to clear flag otherwise interrupts keep firing and stall the program)
 
     /* USER CODE END USART1_Init 2 */
 }
@@ -564,51 +561,35 @@ static void MX_GPIO_Init(void) {
 
 // Callback whenever a timer rolls over
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-    if (htim == &htim2) { // 2000Hz
-        if(p.uart_ready < 2){ //gets set to 0 when receive ends, count to 2 so 0.5-1ms delay
-            p.uart_ready++;
-        }else if(!p.uart_busy){
-            p.uart_busy = 1;
-            // HAL_UARTEx_ReceiveToIdle_IT(&huart1, p.uart_RX, UART_RX_SIZE);
-            // HAL_GPIO_TogglePin(MAG2_CS_GPIO_Port, MAG2_CS_Pin);
-        }  
+    if (htim == &htim2) { // 2000Hz 
     }
 }
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
-    p.uart_ready = 0; //not ready to receive another one yet
+    p.uart_received_flag = 1; //commutation loop will read and clear
 	RS485_SET_TX;
-	HAL_UART_Transmit_DMA(&huart1, p.uart_TX, UART_TX_SIZE); // DMA channel 4
+    if(p.uart_txloaded_flag){
+        p.uart_txloaded_flag = 0; //commutation loop sets this to 1 when uart_TX is updated
+        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, UART_TX_SIZE); // DMA channel 4
+    }
 }
 
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
     RS485_SET_RX;
-    p.uart_busy = 0;
     HAL_UARTEx_ReceiveToIdle_IT(&huart1, p.uart_RX, UART_RX_SIZE);
 }
 
-void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) { // receive overrun error happens once in a while, just restart RX
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) { // shouldn't happen but just in case of overrun, restart RX
+    // clear the uart buffer
+    uint8_t temp_buffer[UARTSIZE];
+    while (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE)) {
+        HAL_UART_Receive(&huart1, temp_buffer, 1, 1);
+    }
+
     RS485_SET_RX;
-
-    // // clear the uart buffer
-    // uint8_t temp_buffer[UARTSIZE];
-    // while (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE)) {
-    //     HAL_UART_Receive(&huart1, temp_buffer, 1, 1);
-    // }
-
-    uint32_t hal_error_code = huart->ErrorCode;
-
-    // if(hal_error_code == HAL_UART_ERROR_ORE){
-
-    // }
-
-    HAL_GPIO_TogglePin(MAG2_CS_GPIO_Port, MAG2_CS_Pin);
-
-    
     HAL_UARTEx_ReceiveToIdle_IT(&huart1, p.uart_RX, UART_RX_SIZE);
-    p.uart_ready = 0;
-//    p.uart_busy = 0;
+
     LED_RED;
 }
 

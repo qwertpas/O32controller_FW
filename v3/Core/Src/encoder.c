@@ -8,6 +8,9 @@
 #include "foc.h"
 #include "comdef.h"
 #include "utils.h"
+#include "global.h"
+#include "stm32f0xx_hal_uart.h"
+#include "main.h"
 
 #define ADC_PER_VOLT 1241 // 4095/3.3
 #define UAMP_PER_ADC 52351
@@ -95,7 +98,8 @@ void encoder_loop() {
     }
 
 
-    if (p.uart_idle) {
+    if (p.uart_received_flag) {
+        p.uart_received_flag = 0;
 
         // clear the uart buffer
         uint8_t temp_buffer[UARTSIZE];
@@ -139,9 +143,7 @@ void encoder_loop() {
         p.uart_TX[2] = (uint8_t)(checksum) & 0b01111111;
         p.uart_TX[3] = MIN_INT8;
 
-        RS485_SET_TX;
-        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 4); // DMA channel 4
-        p.uart_idle = 0;
+        // p.uart_txready_flag = 1;
     }
 
     if (p.print_flag) { // 100Hz clock

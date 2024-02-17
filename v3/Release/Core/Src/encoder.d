@@ -32,7 +32,9 @@ Core/Src/encoder.o: ../Core/Src/encoder.c ../Core/Inc/foc.h \
  ../Drivers/STM32F0xx_HAL_Driver/Inc/stm32f0xx_hal_tim_ex.h \
  ../Drivers/STM32F0xx_HAL_Driver/Inc/stm32f0xx_hal_uart.h \
  ../Drivers/STM32F0xx_HAL_Driver/Inc/stm32f0xx_hal_uart_ex.h \
- ../Core/Inc/comdef.h ../Core/Inc/utils.h
+ ../Core/Inc/comdef.h ../Core/Inc/utils.h ../Core/Inc/global.h \
+ ../Core/Inc/main.h \
+ ../Drivers/STM32F0xx_HAL_Driver/Inc/stm32f0xx_hal_rcc_ex.h
 ../Core/Inc/foc.h:
 ../Core/Inc/global.h:
 ../Drivers/STM32F0xx_HAL_Driver/Inc/stm32f0xx_hal.h:
@@ -70,3 +72,6 @@ Core/Src/encoder.o: ../Core/Src/encoder.c ../Core/Inc/foc.h \
 ../Drivers/STM32F0xx_HAL_Driver/Inc/stm32f0xx_hal_uart_ex.h:
 ../Core/Inc/comdef.h:
 ../Core/Inc/utils.h:
+../Core/Inc/global.h:
+../Core/Inc/main.h:
+../Drivers/STM32F0xx_HAL_Driver/Inc/stm32f0xx_hal_rcc_ex.h:

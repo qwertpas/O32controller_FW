@@ -27,7 +27,7 @@ int32_t abs32(int32_t val) {
     else return val;
 }
 
-int16_t pad14(int32_t val) {
+int16_t pad14(int32_t val) { //sign extend to 16 bits
     return (val & 0x2000) ? (val | 0xC000) : val;
 }
 

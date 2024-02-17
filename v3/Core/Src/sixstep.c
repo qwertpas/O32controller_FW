@@ -5,9 +5,12 @@
  *      Author: chris
  */
 
-#include "foc.h"
+#include "global.h"
 #include "comdef.h"
 #include "utils.h"
+#include "sixstep.h"
+
+
 
 #define ADC_PER_VOLT 1241 // 4095/3.3
 #define UAMP_PER_ADC 52351
@@ -103,7 +106,7 @@ void sixstep_startup() {
         HAL_GPIO_WritePin(MAG1_CS_GPIO_Port, MAG1_CS_Pin, 1);
 
 
-        HAL_ADC_Start_DMA(&hadc, (uint32_t *)p.adc_vals, NBR_ADC); // start the adc in dma mode
+        HAL_ADC_Start_DMA(&hadc, (uint32_t *) p.adc_vals, NBR_ADC); // start the adc in dma mode
 
         HAL_UART_Receive(&huart1, p.uart_RX, 1, 1);
     }
@@ -241,25 +244,11 @@ void sixstep_loop() {
 
 
 
-    if (p.uart_idle) {
+    if (p.uart_received_flag) {
+        p.uart_received_flag = 0; //clear flag
 
-        // // clear the uart buffer
-        // uint8_t temp_buffer[UARTSIZE];
-        // while (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE)) {
-        //     HAL_UART_Receive(&huart1, temp_buffer, 1, 1);
-        // }
-
-        // check which of 3 bytes is the cmd and concat 14 data bytes into int16_t (signed)
-        if (p.uart_RX[0] & 0x80) {
-            p.uart_cmd[0] = p.uart_RX[0] & CMD_MASK;
-            p.uart_cmd[1] = (p.uart_RX[1] << 7) | (p.uart_RX[2]);
-        } else if (p.uart_RX[1] & 0x80) {
-            p.uart_cmd[0] = p.uart_RX[1] & CMD_MASK;
-            p.uart_cmd[1] = (p.uart_RX[2] << 7) | (p.uart_RX[0]);
-        } else {
-            p.uart_cmd[0] = p.uart_RX[2] & CMD_MASK;
-            p.uart_cmd[1] = (p.uart_RX[0] << 7) | (p.uart_RX[1]);
-        }
+        p.uart_cmd[0] = p.uart_RX[0] & CMD_MASK;
+        p.uart_cmd[1] = (p.uart_RX[1] << 7) | (p.uart_RX[2]);
         p.uart_cmd[1] = pad14(p.uart_cmd[1]);
 
         if (p.uart_cmd[0] == CMD_SET_VOLTAGE) {
@@ -276,21 +265,27 @@ void sixstep_loop() {
             encoder_res = p.uart_cmd[1];
         }
 
-        // p.uart_TX[0] = (uint8_t)(p.uart_cmd[1] >> 7) & 0b01111111;
-        // p.uart_TX[1] = (uint8_t)(p.uart_cmd[1] >> 0) & 0b01111111;
-        // p.uart_TX[2] = (uint8_t)(cont_angle >> (encoder_res + 7)) & 0b01111111;
-        // p.uart_TX[3] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
-        // p.uart_TX[4] = MIN_INT8;
+        p.uart_TX[0] = p.uart_RX[0];
+        p.uart_TX[1] = p.uart_RX[1];
+        p.uart_TX[2] = p.uart_RX[2];
+        p.uart_txloaded_flag = 1;           //let the uart know that TX is ready to send on the bus
+    }
 
-        // p.uart_TX[0] = (uint8_t)(p.adc_vals[3] >> 7) & 0b01111111;
-        // p.uart_TX[1] = (uint8_t)(p.adc_vals[3] >> 0) & 0b01111111;
-        // p.uart_TX[2] = (uint8_t)(p.adc_vals[0] >> 7) & 0b01111111;
-        // p.uart_TX[3] = (uint8_t)(p.adc_vals[0] >> 0) & 0b01111111;
+    // p.uart_TX[0] = (uint8_t)(p.uart_cmd[1] >> 7) & 0b01111111;
+    // p.uart_TX[1] = (uint8_t)(p.uart_cmd[1] >> 0) & 0b01111111;
+    // p.uart_TX[2] = (uint8_t)(cont_angle >> (encoder_res + 7)) & 0b01111111;
+    // p.uart_TX[3] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
+    // p.uart_TX[4] = MIN_INT8;
 
-        // p.uart_TX[0] = (uint8_t)(cont_angle >> (encoder_res + 7)) & 0b01111111;
-        // p.uart_TX[1] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
-        // p.uart_TX[2] = (uint8_t)(I_phase >> 7) & 0b01111111;
-        // p.uart_TX[3] = (uint8_t)(I_phase >> 0) & 0b01111111;
+    // p.uart_TX[0] = (uint8_t)(p.adc_vals[3] >> 7) & 0b01111111;
+    // p.uart_TX[1] = (uint8_t)(p.adc_vals[3] >> 0) & 0b01111111;
+    // p.uart_TX[2] = (uint8_t)(p.adc_vals[0] >> 7) & 0b01111111;
+    // p.uart_TX[3] = (uint8_t)(p.adc_vals[0] >> 0) & 0b01111111;
+
+    // p.uart_TX[0] = (uint8_t)(cont_angle >> (encoder_res + 7)) & 0b01111111;
+    // p.uart_TX[1] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
+    // p.uart_TX[2] = (uint8_t)(I_phase >> 7) & 0b01111111;
+    // p.uart_TX[3] = (uint8_t)(I_phase >> 0) & 0b01111111;
 
 //        p.uart_TX[0] = (uint8_t)(I_phase >> 7) & 0b01111111;
 //        p.uart_TX[1] = (uint8_t)(I_phase >> 0) & 0b01111111;
@@ -305,26 +300,18 @@ void sixstep_loop() {
 //        }
 //        p.uart_TX[6] = (uint8_t)(checksum) & 0b01111111;
 
-        // p.uart_TX[4] = (uint8_t)(I_d_filt >> 7) & 0b01111111;
-        // p.uart_TX[5] = (uint8_t)(I_d_filt >> 0) & 0b01111111;
-        // p.uart_TX[6] = (uint8_t)(I_q_filt >> 7) & 0b01111111;
-        // p.uart_TX[7] = (uint8_t)(I_q_filt >> 0) & 0b01111111;
-        // p.uart_TX[2] = (uint8_t)(cont_angle >> (encoder_res + 7)) & 0b01111111;
-        // p.uart_TX[3] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
+    // p.uart_TX[4] = (uint8_t)(I_d_filt >> 7) & 0b01111111;
+    // p.uart_TX[5] = (uint8_t)(I_d_filt >> 0) & 0b01111111;
+    // p.uart_TX[6] = (uint8_t)(I_q_filt >> 7) & 0b01111111;
+    // p.uart_TX[7] = (uint8_t)(I_q_filt >> 0) & 0b01111111;
+    // p.uart_TX[2] = (uint8_t)(cont_angle >> (encoder_res + 7)) & 0b01111111;
+    // p.uart_TX[3] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
 //        p.uart_TX[2] = MIN_INT8;
 
-		p.uart_TX[0] = p.uart_RX[0];
-		p.uart_TX[1] = p.uart_RX[1];
-		p.uart_TX[2] = p.uart_RX[2];
+    
+    
 
-        
-
-        // RS485_SET_TX;
-        // HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 3); // DMA channel 4
-        p.uart_idle = 0;
-    }
-
-    if (p.print_flag) { // 1000Hz clock
+    if (p.print_flag) { // 100Hz clock
 
         rpm = ((cont_angle - cont_angle_prev) * 1000 * 60) >> 15; // should be accurate within reasonable RPM range if 32-bit
         cont_angle_prev = cont_angle;

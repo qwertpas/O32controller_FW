@@ -32,7 +32,8 @@ Core/Src/foc.o: ../Core/Src/foc.c ../Core/Inc/foc.h ../Core/Inc/global.h \
  ../Drivers/STM32F0xx_HAL_Driver/Inc/stm32f0xx_hal_tim_ex.h \
  ../Drivers/STM32F0xx_HAL_Driver/Inc/stm32f0xx_hal_uart.h \
  ../Drivers/STM32F0xx_HAL_Driver/Inc/stm32f0xx_hal_uart_ex.h \
- ../Core/Inc/comdef.h ../Core/Inc/utils.h
+ ../Core/Inc/comdef.h ../Core/Inc/utils.h \
+ ../Drivers/CMSIS/Device/ST/STM32F0xx/Include/stm32f031x6.h
 ../Core/Inc/foc.h:
 ../Core/Inc/global.h:
 ../Drivers/STM32F0xx_HAL_Driver/Inc/stm32f0xx_hal.h:
@@ -70,3 +71,4 @@ Core/Src/foc.o: ../Core/Src/foc.c ../Core/Inc/foc.h ../Core/Inc/global.h \
 ../Drivers/STM32F0xx_HAL_Driver/Inc/stm32f0xx_hal_uart_ex.h:
 ../Core/Inc/comdef.h:
 ../Core/Inc/utils.h:
+../Drivers/CMSIS/Device/ST/STM32F0xx/Include/stm32f031x6.h:

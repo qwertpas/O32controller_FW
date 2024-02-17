@@ -9,6 +9,8 @@
 #include "comdef.h"
 #include "utils.h"
 #include <math.h>
+#include "stm32f031x6.h"
+
 
 #define ADC_PER_VOLT 1241 // 4095/3.3
 #define UAMP_PER_ADC 52351
@@ -326,13 +328,9 @@ void foc_loop() {
     }
 
 
-    if (p.uart_idle) {
+    if (p.uart_received_flag) {
+        p.uart_received_flag = 0;
 
-        // clear the uart buffer
-        uint8_t temp_buffer[UARTSIZE];
-        while (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE)) {
-            HAL_UART_Receive(&huart1, temp_buffer, 1, 1);
-        }
 
         // check which of 3 bytes is the cmd and concat 14 data bytes into int16_t (signed)
         if (p.uart_RX[0] & 0x80) {
@@ -391,12 +389,6 @@ void foc_loop() {
         // p.uart_TX[8] = (uint8_t)(checksum) & 0b01111111;
 
         p.uart_TX[4] = MIN_INT8;
-
-        
-
-        RS485_SET_TX;
-        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 10); // DMA channel 4
-        p.uart_idle = 0;
     }
 
     if (p.print_flag) { // 100Hz clock
