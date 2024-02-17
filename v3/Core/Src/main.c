@@ -568,10 +568,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
     p.uart_received_flag = 1; //commutation loop will read and clear
 	RS485_SET_TX;
-    if(p.uart_txloaded_flag){
-        p.uart_txloaded_flag = 0; //commutation loop sets this to 1 when uart_TX is updated
-        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, UART_TX_SIZE); // DMA channel 4
-    }
+    HAL_UART_Transmit_DMA(&huart1, p.uart_TX, UART_TX_SIZE); // DMA channel 4
+    //maybe add a check if uart_TX has been completely written to, but seems fine for now
 }
 
 

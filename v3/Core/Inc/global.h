@@ -153,7 +153,6 @@ typedef struct {
 
     uint8_t uart_watchdog;
     uint8_t uart_received_flag;
-    uint8_t uart_txloaded_flag;
 
 } PeripherialStruct;
 extern PeripherialStruct p;

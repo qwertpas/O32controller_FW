@@ -237,13 +237,6 @@ void sixstep_loop() {
 		}  
     }
 
-    p.uart_TX[0] = p.uart_RX[0];
-    p.uart_TX[1] = p.uart_RX[1];
-    p.uart_TX[2] = p.uart_RX[2];
-
-
-
-
     if (p.uart_received_flag) {
         p.uart_received_flag = 0; //clear flag
 
@@ -268,7 +261,6 @@ void sixstep_loop() {
         p.uart_TX[0] = p.uart_RX[0];
         p.uart_TX[1] = p.uart_RX[1];
         p.uart_TX[2] = p.uart_RX[2];
-        p.uart_txloaded_flag = 1;           //let the uart know that TX is ready to send on the bus
     }
 
     // p.uart_TX[0] = (uint8_t)(p.uart_cmd[1] >> 7) & 0b01111111;
