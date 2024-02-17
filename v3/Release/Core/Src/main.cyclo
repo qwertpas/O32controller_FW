@@ -1,9 +1,9 @@
 ../Core/Src/main.c:64:5:__io_putchar	1
 ../Core/Src/main.c:566:6:HAL_TIM_PeriodElapsedCallback	4
-../Core/Src/main.c:579:6:HAL_UARTEx_RxEventCallback	1
-../Core/Src/main.c:586:6:HAL_UART_TxCpltCallback	1
-../Core/Src/main.c:591:6:HAL_UART_ErrorCallback	2
-../Core/Src/main.c:613:6:HAL_ADC_ConvCpltCallback	2
-../Core/Src/main.c:627:6:Error_Handler	1
+../Core/Src/main.c:578:6:HAL_UARTEx_RxEventCallback	1
+../Core/Src/main.c:585:6:HAL_UART_TxCpltCallback	1
+../Core/Src/main.c:591:6:HAL_UART_ErrorCallback	1
+../Core/Src/main.c:615:6:HAL_ADC_ConvCpltCallback	2
+../Core/Src/main.c:629:6:Error_Handler	1
 ../Core/Src/main.c:167:6:SystemClock_Config	3
 ../Core/Src/main.c:80:5:main	22
