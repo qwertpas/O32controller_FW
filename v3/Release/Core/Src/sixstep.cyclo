@@ -1,2 +1,2 @@
 ../Core/Src/sixstep.c:66:6:sixstep_startup	2
-../Core/Src/sixstep.c:135:6:sixstep_loop	24
+../Core/Src/sixstep.c:131:6:sixstep_loop	24

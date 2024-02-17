@@ -609,7 +609,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) { // shouldn't happen but
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
     if (hadc->Instance == ADC1) {
         //        LED_GREEN;
-        HAL_GPIO_TogglePin(MAG2_CS_GPIO_Port, MAG2_CS_Pin);
+//        HAL_GPIO_TogglePin(MAG2_CS_GPIO_Port, MAG2_CS_Pin);
         p.adc_conversion_flag = 1; // allow main loop to continiue
     }
 }

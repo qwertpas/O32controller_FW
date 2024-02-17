@@ -37,10 +37,11 @@
 
 #define KP_q 0
 #define KI_q 0
+// #define KF_q (1<<23)
 #define KF_q (1<<23)
 
 #define D_min 0
-#define D_max (uint16_t)(128) //must be a power of 2
+#define D_max (uint16_t)(1024) //must be a power of 2
 #define D_mid (D_max>>1)
 #define log2_V_per_D LOG2((1<<16)/D_max)  // rightshift amount to map voltage [-32768, 32768) to [0, D_max)
 
@@ -129,6 +130,7 @@ void foc_startup() {
     HAL_TIM_Base_Start(&htim1);  // Replace htim1 with your TIM_HandleTypeDef instance
     TIM1->EGR = TIM_EGR_UG;
     htim1.Instance->RCR = 1; // Set RCR
+    TIM1->EGR = TIM_EGR_UG;
 
 
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
@@ -166,7 +168,7 @@ void foc_startup() {
         HAL_SPI_TransmitReceive(&hspi1, p.spi_TX, p.spi_RX, 2, HAL_MAX_DELAY);
         HAL_GPIO_WritePin(MAG1_CS_GPIO_Port, MAG1_CS_Pin, 1);
 
-        HAL_ADC_Start_DMA(&hadc, (uint32_t *)p.adc_vals, NBR_ADC); // start the adc in dma mode
+        // HAL_ADC_Start_DMA(&hadc, (uint32_t *)p.adc_vals, NBR_ADC); // start the adc in dma mode
 
         HAL_UART_Receive(&huart1, p.uart_RX, 1, 1);
     }
@@ -180,14 +182,15 @@ void foc_startup() {
     m_angle_prev = m_angle;
     e_offset = (m_angle * PPAIRS - e_offset) & (32768 - 1);         // convert to electrical angle, modulo 32768
 
-    HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
-    //    HAL_UART_Receive_DMA(&huart1, p.uart_RX, UARTSIZE);
+    HAL_UARTEx_ReceiveToIdle_IT(&huart1, p.uart_RX, UART_RX_SIZE);
 }
 
 void foc_loop() {
 
     if(!p.adc_conversion_flag) return;
     p.adc_conversion_flag = 0;
+
+    HAL_GPIO_TogglePin(MAG2_CS_GPIO_Port, MAG2_CS_Pin);
 
 
     // LED_RED;
@@ -224,13 +227,13 @@ void foc_loop() {
         // phase currents are in adc units [-2048, 2047] (1 bit sign, 11 bit value)
         // to get current in milliamps, multiply by UAMP_PER_ADC then divide by 1000
         I_u = I_u_accum >> ADC_FILT_LVL;
-        I_u_accum = I_u_accum - I_u + (p.adc_vals[3] - adc_U_offset);
+        I_u_accum = I_u_accum - I_u + (p.adc_vals[4] - adc_U_offset);
 
         I_v = I_v_accum >> ADC_FILT_LVL;
         I_v_accum = I_v_accum - I_v + (p.adc_vals[0] - adc_V_offset);
 
         I_w = I_w_accum >> ADC_FILT_LVL;
-        I_w_accum = I_w_accum - I_w + (p.adc_vals[1] - adc_W_offset);
+        I_w_accum = I_w_accum - I_w + (p.adc_vals[2] - adc_W_offset);
 
         I_phase = abs16(I_u);
         if(abs16(I_v) > I_phase) I_phase = abs16(I_v);
@@ -324,25 +327,15 @@ void foc_loop() {
     // temp low pass filter
     {
         temp = temp_accum >> TEMP_FILT_LVL;
-        temp_accum = temp_accum - temp + p.adc_vals[4];
+        temp_accum = temp_accum - temp + p.adc_vals[5];
     }
 
 
     if (p.uart_received_flag) {
         p.uart_received_flag = 0;
 
-
-        // check which of 3 bytes is the cmd and concat 14 data bytes into int16_t (signed)
-        if (p.uart_RX[0] & 0x80) {
-            p.uart_cmd[0] = p.uart_RX[0] & CMD_MASK;
-            p.uart_cmd[1] = (p.uart_RX[1] << 7) | (p.uart_RX[2]);
-        } else if (p.uart_RX[1] & 0x80) {
-            p.uart_cmd[0] = p.uart_RX[1] & CMD_MASK;
-            p.uart_cmd[1] = (p.uart_RX[2] << 7) | (p.uart_RX[0]);
-        } else {
-            p.uart_cmd[0] = p.uart_RX[2] & CMD_MASK;
-            p.uart_cmd[1] = (p.uart_RX[0] << 7) | (p.uart_RX[1]);
-        }
+        p.uart_cmd[0] = p.uart_RX[0] & CMD_MASK;
+        p.uart_cmd[1] = (p.uart_RX[1] << 7) | (p.uart_RX[2]);
         p.uart_cmd[1] = pad14(p.uart_cmd[1]);
 
         if (p.uart_cmd[0] == CMD_SET_VOLTAGE) {
@@ -359,58 +352,43 @@ void foc_loop() {
             encoder_res = p.uart_cmd[1];
         }
 
-        // p.uart_TX[0] = (uint8_t)(p.uart_cmd[1] >> 7) & 0b01111111;
-        // p.uart_TX[1] = (uint8_t)(p.uart_cmd[1] >> 0) & 0b01111111;
-        // p.uart_TX[2] = (uint8_t)(cont_angle >> (encoder_res + 7)) & 0b01111111;
-        // p.uart_TX[3] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
-        // p.uart_TX[4] = MIN_INT8;
 
         p.uart_TX[0] = (uint8_t)(I_q >> 7) & 0b01111111;
         p.uart_TX[1] = (uint8_t)(I_q >> 0) & 0b01111111;
         p.uart_TX[2] = (uint8_t)(I_d >> 7) & 0b01111111;
         p.uart_TX[3] = (uint8_t)(I_d >> 0) & 0b01111111;
-        p.uart_TX[4] = (uint8_t)(temp >> 7) & 0b01111111;
-        p.uart_TX[5] = (uint8_t)(temp >> 0) & 0b01111111;
+        // p.uart_TX[4] = (uint8_t)(temp >> 7) & 0b01111111;
+        // p.uart_TX[5] = (uint8_t)(temp >> 0) & 0b01111111;
 
-        // p.uart_TX[0] = (uint8_t)(V_u >> 9) & 0b01111111;
-        // p.uart_TX[1] = (uint8_t)(V_u >> 2) & 0b01111111;
-        // p.uart_TX[2] = (uint8_t)(V_v >> 9) & 0b01111111;
-        // p.uart_TX[3] = (uint8_t)(V_v >> 2) & 0b01111111;
-        // p.uart_TX[4] = (uint8_t)(V_w >> 9) & 0b01111111;
-        // p.uart_TX[5] = (uint8_t)(V_w >> 2) & 0b01111111;
-        // p.uart_TX[6] = (uint8_t)((D_u+1) >> 0) & 0b01111111;
-        // p.uart_TX[7] = (uint8_t)((D_v+1) >> 0) & 0b01111111;
-        // p.uart_TX[8] = (uint8_t)((D_w+1) >> 0) & 0b01111111;
 
-        // uint8_t checksum = 0;
-        // for(int i=0; i<8; i++){
-        //     checksum += p.uart_TX[i];
-        // }
-        // p.uart_TX[8] = (uint8_t)(checksum) & 0b01111111;
 
         p.uart_TX[4] = MIN_INT8;
+
+        RS485_SET_TX;
+        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 5);
     }
 
-    if (p.clock_1khz_flag) {
+    // if (p.clock_1khz_flag) {
 
-        rpm = ((cont_angle - cont_angle_prev) * 100 * 60) >> 15; // should be accurate within reasonable RPM range if 32-bit
-        cont_angle_prev = cont_angle;
+    //     rpm = ((cont_angle - cont_angle_prev) * 1000 * 60) >> 15; // should be accurate within reasonable RPM range if 32-bit
+    //     cont_angle_prev = cont_angle;
 
-        loop_freq = count * 100;
-        count = 0;
+    //     loop_freq = count * 100;
+    //     count = 0;
 
-        uart_watchdog++;
-        if (uart_watchdog > 5) {
-            uart_watchdog = 5;
-        }
+    //     uart_watchdog++;
+    //     if (uart_watchdog > 5) {
+    //         uart_watchdog = 5;
+    //     }
 
-        // uint8_t print_TX[50];
-        // sprintf((char*) print_TX, " freq: %d\n I_d_filt: %d\n I_q_filt: %d\n \t", loop_freq, I_d_filt, I_q_filt);
-        // RS485_SET_TX;
-        // HAL_UART_Transmit_DMA(&huart1, print_TX, 20);
+    //     // uint8_t print_TX[50];
+    //     // sprintf((char*) print_TX, " freq: %d\n I_d_filt: %d\n I_q_filt: %d\n \t", loop_freq, I_d_filt, I_q_filt);
+    //     // RS485_SET_TX;
+    //     // HAL_UART_Transmit_DMA(&huart1, print_TX, 20);
 
-        p.clock_1khz_flag = 0;
-    }
-    // LED_GREEN;
+    //     p.clock_1khz_flag = 0;
+    // }
+    
+    LED_GREEN;
 }
 

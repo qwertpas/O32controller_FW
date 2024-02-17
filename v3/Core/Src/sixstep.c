@@ -125,11 +125,7 @@ void sixstep_startup() {
     TIM1->CCR2 = 0;
     TIM1->CCR3 = 0;
 
-//    HAL_UART_Receive_IT(&huart1, p.uart_RX, UART_RX_SIZE);
    HAL_UARTEx_ReceiveToIdle_IT(&huart1, p.uart_RX, UART_RX_SIZE);
-
-   p.adc_vals[0] = 69;
-
 }
 
 void sixstep_loop() {
@@ -272,8 +268,8 @@ void sixstep_loop() {
         p.uart_TX[1] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
         // p.uart_TX[2] = (uint8_t)(I_phase >> 7) & 0b01111111;
         // p.uart_TX[3] = (uint8_t)(I_phase >> 0) & 0b01111111;
-        p.uart_TX[2] = (uint8_t)(p.adc_vals[0] >> 7) & 0b01111111;
-        p.uart_TX[3] = (uint8_t)(p.adc_vals[0] >> 0) & 0b01111111;
+        p.uart_TX[2] = (uint8_t)(I_phase >> 7) & 0b01111111;
+        p.uart_TX[3] = (uint8_t)(I_phase >> 0) & 0b01111111;
         p.uart_TX[4] = MIN_INT8;
 
         RS485_SET_TX;
