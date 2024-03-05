@@ -338,7 +338,7 @@ void foc_loop() {
         if (p.uart_cmd[0] == CMD_SET_VOLTAGE) {
             reverse = (p.uart_cmd[1] >> 13) & 1;
             mag = reverse ? (~p.uart_cmd[1]) + 1 : p.uart_cmd[1]; // If negative, take the absolute value assuming two's complement
-            I_q_des = p.uart_cmd[1] >> 2;
+            I_q_des = p.uart_cmd[1] >> 1; 
         } else if (p.uart_cmd[0] == CMD_SET_CURRENT) {
             I_max = p.uart_cmd[1];
         } else if (p.uart_cmd[0] == CMD_SET_POSITION) {
