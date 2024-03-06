@@ -112,13 +112,15 @@ static int16_t D_u = 0;
 static int16_t D_v = 0;
 static int16_t D_w = 0;
 
-static int16_t temp = 0;
-static int32_t temp_accum = 0;
+static int16_t temp_pcb = 0;
+static int32_t temp_pcb_accum = 0;
 
 static uint32_t count = 0;     // incremented every loop, reset at 100Hz
 static uint16_t loop_freq = 0; // Hz, calculated at 100Hz using count
 
-static uint8_t temperature = 0; //ºC from NTC lookup table
+static uint8_t temp_coil = 0; //ºC from NTC lookup table
+
+static uint8_t overtemp = 0;
 
 
 void foc_startup() {
@@ -181,7 +183,12 @@ void foc_startup() {
 
     m_angle = (uint16_t)((p.spi_RX[0] << 8) + p.spi_RX[1] + 16384); // 0 to 32767
     m_angle_prev = m_angle;
-    e_offset = (m_angle * PPAIRS - e_offset) & (32768 - 1);         // convert to electrical angle, modulo 32768
+
+    if(E_OFFSET == 0){
+    	e_offset = (m_angle * PPAIRS - e_offset) & (32768 - 1);         // convert to electrical angle, modulo 32768
+    }else{
+    	e_offset = E_OFFSET;
+    }
 
     HAL_UARTEx_ReceiveToIdle_IT(&huart1, p.uart_RX, UART_RX_SIZE);
 }
@@ -309,7 +316,7 @@ void foc_loop() {
 
     //apply center aligned PWM
     {
-        if(I_q_des == 0){
+        if(I_q_des == 0 || overtemp){
             TIM1->CCR1 = 0;
             TIM1->CCR2 = 0;
             TIM1->CCR3 = 0;
@@ -323,8 +330,8 @@ void foc_loop() {
 
     // temp low pass filter
     {
-        temp = temp_accum >> TEMP_FILT_LVL;
-        temp_accum = temp_accum - temp + p.adc_vals[5];
+        temp_pcb = temp_pcb_accum >> TEMP_FILT_LVL;
+        temp_pcb_accum = temp_pcb_accum - temp_pcb + p.adc_vals[5];
     }
 
 
@@ -350,28 +357,47 @@ void foc_loop() {
         }
 
 
-        p.uart_TX[0] = (uint8_t)(I_q >> 7) & 0b01111111;
-        p.uart_TX[1] = (uint8_t)(I_q >> 0) & 0b01111111;
-        p.uart_TX[2] = (uint8_t)(I_d >> 7) & 0b01111111;
-        p.uart_TX[3] = (uint8_t)(I_d >> 0) & 0b01111111;
+        // p.uart_TX[0] = (uint8_t)(I_q_filt >> 7) & 0b01111111;
+        // p.uart_TX[1] = (uint8_t)(I_q_filt >> 0) & 0b01111111;
+        // p.uart_TX[2] = (uint8_t)(rpm >> (1+7)) & 0b01111111;
+        // p.uart_TX[3] = (uint8_t)(rpm >> (1+0)) & 0b01111111;
+        // p.uart_TX[4] = (uint8_t)(temp_pcb >> 7) & 0b01111111;
+        // p.uart_TX[5] = (uint8_t)(temp_pcb >> 0) & 0b01111111;
 
-        p.uart_TX[4] = (uint8_t)(temperature >> 0) & 0b01111111;
+        p.uart_TX[0] = (uint8_t)(cont_angle >> 21) & 0b01111111;
+        p.uart_TX[1] = (uint8_t)(cont_angle >> 14) & 0b01111111;
+        p.uart_TX[2] = (uint8_t)(cont_angle >> 07) & 0b01111111;
+        p.uart_TX[3] = (uint8_t)(cont_angle >> 00) & 0b01111111;
+
+        p.uart_TX[4] = (uint8_t)(rpm >> (1+7)) & 0b01111111;
+        p.uart_TX[5] = (uint8_t)(rpm >> (1+0)) & 0b01111111;
+
+        p.uart_TX[6] = (uint8_t)(temp_coil >> 0) & 0b01111111;
 
 
-        p.uart_TX[5] = MIN_INT8;
+        p.uart_TX[7] = MIN_INT8;
 
         RS485_SET_TX;
-        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 6);
+        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 8);
     }
 
 
-    LED_GREEN;
+    if(overtemp){
+        LED_RED;
+    }else{
+    	LED_GREEN;
+    }
 }
 
 void foc_slowloop(){
-    temperature = ntc_lut[(p.adc_vals[1]-121)>>5];
+    temp_coil = ntc_lut[(p.adc_vals[1]-121)>>5]; //read NTC and use lookup table
+    if(temp_coil > OVERTEMP_H){
+    	overtemp = 1;
+    }else if(overtemp && temp_coil < OVERTEMP_L){
+    	overtemp = 0;
+    }
 
-    //     rpm = ((cont_angle - cont_angle_prev) * 1000 * 60) >> 15; // should be accurate within reasonable RPM range if 32-bit
-    //     cont_angle_prev = cont_angle;
+	 rpm = ((cont_angle - cont_angle_prev) * 1000 * 60) >> 15; // should be accurate within reasonable RPM range if 32-bit
+	 cont_angle_prev = cont_angle;
 
 }

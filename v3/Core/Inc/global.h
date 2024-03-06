@@ -21,14 +21,19 @@
 /* ============= START CONFIG ================= */
 
 // 4-bit address
-#define UART_ADDR 0xA
+#define UART_ADDR 0xB
 
 #define SELECTED_MODE FOC_MODE //SIXSTEP, FOC, ENCODER
-#define PWM_FREQ 20000 //kHz     //20kHz is tiny bit more efficient
+#define PWM_FREQ 20000 //kHz     //20kHz is more efficient, though can get slightly higher speed with higher freq
 
 // Motor parameters
 #define PPAIRS 7        // pole pairs
 #define INVERT_MAG 1    //invert=0 for red motor, invert=1 for green motor
+
+#define E_OFFSET 26000 //mag offset, differs for each motor. Set to zero to automatically find.
+
+#define OVERTEMP_H 85 //disabled if coil temp goes above this
+#define OVERTEMP_L 70 //enabled again if coil temp drops below this
 
 /* ============= END CONFIG ================= */
 
