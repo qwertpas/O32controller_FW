@@ -29,23 +29,23 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   CONTENTS, READONLY
  12 .comment      00000043  00000000  00000000  00020094  2**0
                   CONTENTS, READONLY
- 13 .debug_info   00019a7e  00000000  00000000  000200d7  2**0
+ 13 .debug_info   00019a82  00000000  00000000  000200d7  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 14 .debug_abbrev 000033b6  00000000  00000000  00039b55  2**0
+ 14 .debug_abbrev 000033b4  00000000  00000000  00039b59  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 15 .debug_loclists 0000ad0b  00000000  00000000  0003cf0b  2**0
+ 15 .debug_loclists 0000ad0b  00000000  00000000  0003cf0d  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 16 .debug_aranges 00000db8  00000000  00000000  00047c16  2**0
+ 16 .debug_aranges 00000db8  00000000  00000000  00047c18  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 17 .debug_rnglists 00001120  00000000  00000000  000489ce  2**0
+ 17 .debug_rnglists 00001120  00000000  00000000  000489d0  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 18 .debug_macro  00003bb3  00000000  00000000  00049aee  2**0
+ 18 .debug_macro  00003bb3  00000000  00000000  00049af0  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 19 .debug_line   0001b850  00000000  00000000  0004d6a1  2**0
+ 19 .debug_line   0001b859  00000000  00000000  0004d6a3  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 20 .debug_str    0006f50b  00000000  00000000  00068ef1  2**0
+ 20 .debug_str    0006f50b  00000000  00000000  00068efc  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 21 .debug_frame  00003178  00000000  00000000  000d83fc  2**2
+ 21 .debug_frame  00003178  00000000  00000000  000d8408  2**2
                   CONTENTS, READONLY, DEBUGGING, OCTETS
 
 Disassembly of section .text:
@@ -494,7 +494,7 @@ void foc_startup() {
  800038c:	200002a8 	.word	0x200002a8
  8000390:	200000d8 	.word	0x200000d8
  8000394:	200000d6 	.word	0x200000d6
- 8000398:	00006590 	.word	0x00006590
+ 8000398:	00005cf8 	.word	0x00005cf8
 
 0800039c <foc_loop>:
 
@@ -592,537 +592,540 @@ void foc_loop() {
  800041e:	00da      	lsls	r2, r3, #3
  8000420:	1ad2      	subs	r2, r2, r3
  8000422:	1a52      	subs	r2, r2, r1
- 8000424:	0452      	lsls	r2, r2, #17
-        if (INVERT_MAG) e_angle *= -1;
- 8000426:	4dc8      	ldr	r5, [pc, #800]	; (8000748 <foc_loop+0x3ac>)
-        e_angle = (m_angle * PPAIRS - e_offset) & (32768 - 1); // convert to electrical angle and modulo
- 8000428:	0c52      	lsrs	r2, r2, #17
-        if (INVERT_MAG) e_angle *= -1;
- 800042a:	4252      	negs	r2, r2
- 800042c:	802a      	strh	r2, [r5, #0]
         if (m_angle_prev < 8192 && m_angle > 24576) { // detect angle wraparound and increment a revolution
- 800042e:	2280      	movs	r2, #128	; 0x80
- 8000430:	49c6      	ldr	r1, [pc, #792]	; (800074c <foc_loop+0x3b0>)
- 8000432:	0192      	lsls	r2, r2, #6
- 8000434:	8808      	ldrh	r0, [r1, #0]
- 8000436:	4290      	cmp	r0, r2
- 8000438:	d300      	bcc.n	800043c <foc_loop+0xa0>
- 800043a:	e13c      	b.n	80006b6 <foc_loop+0x31a>
- 800043c:	22c0      	movs	r2, #192	; 0xc0
- 800043e:	01d2      	lsls	r2, r2, #7
- 8000440:	4293      	cmp	r3, r2
- 8000442:	d900      	bls.n	8000446 <foc_loop+0xaa>
- 8000444:	e167      	b.n	8000716 <foc_loop+0x37a>
+ 8000424:	2180      	movs	r1, #128	; 0x80
+ 8000426:	48c8      	ldr	r0, [pc, #800]	; (8000748 <foc_loop+0x3ac>)
+        e_angle = (m_angle * PPAIRS - e_offset) & (32768 - 1); // convert to electrical angle and modulo
+ 8000428:	0452      	lsls	r2, r2, #17
+        if (m_angle_prev < 8192 && m_angle > 24576) { // detect angle wraparound and increment a revolution
+ 800042a:	8805      	ldrh	r5, [r0, #0]
+        e_angle = (m_angle * PPAIRS - e_offset) & (32768 - 1); // convert to electrical angle and modulo
+ 800042c:	0c52      	lsrs	r2, r2, #17
+        if (m_angle_prev < 8192 && m_angle > 24576) { // detect angle wraparound and increment a revolution
+ 800042e:	0189      	lsls	r1, r1, #6
+ 8000430:	428d      	cmp	r5, r1
+ 8000432:	d300      	bcc.n	8000436 <foc_loop+0x9a>
+ 8000434:	e140      	b.n	80006b8 <foc_loop+0x31c>
+ 8000436:	21c0      	movs	r1, #192	; 0xc0
+ 8000438:	01c9      	lsls	r1, r1, #7
+ 800043a:	428b      	cmp	r3, r1
+ 800043c:	d900      	bls.n	8000440 <foc_loop+0xa4>
+ 800043e:	e16b      	b.n	8000718 <foc_loop+0x37c>
             revs -= 32768;
- 8000446:	4ac2      	ldr	r2, [pc, #776]	; (8000750 <foc_loop+0x3b4>)
- 8000448:	6812      	ldr	r2, [r2, #0]
+ 8000440:	49c2      	ldr	r1, [pc, #776]	; (800074c <foc_loop+0x3b0>)
+ 8000442:	6809      	ldr	r1, [r1, #0]
         I_u_accum = I_u_accum - I_u + (p.adc_vals[4] - adc_U_offset);
- 800044a:	4ec2      	ldr	r6, [pc, #776]	; (8000754 <foc_loop+0x3b8>)
+ 8000444:	4ec2      	ldr	r6, [pc, #776]	; (8000750 <foc_loop+0x3b4>)
+			e_angle *= -1;
+ 8000446:	4dc3      	ldr	r5, [pc, #780]	; (8000754 <foc_loop+0x3b8>)
+        I_u_accum = I_u_accum - I_u + (p.adc_vals[4] - adc_U_offset);
+ 8000448:	46b4      	mov	ip, r6
+			e_angle *= -1;
+ 800044a:	4252      	negs	r2, r2
         m_angle_prev = m_angle;
- 800044c:	800b      	strh	r3, [r1, #0]
-        I_u_accum = I_u_accum - I_u + (p.adc_vals[4] - adc_U_offset);
- 800044e:	46b4      	mov	ip, r6
+ 800044c:	8003      	strh	r3, [r0, #0]
+			e_angle *= -1;
+ 800044e:	802a      	strh	r2, [r5, #0]
         cont_angle = m_angle + revs;
- 8000450:	48c1      	ldr	r0, [pc, #772]	; (8000758 <foc_loop+0x3bc>)
+ 8000450:	185b      	adds	r3, r3, r1
+			cont_angle *= -1;
+ 8000452:	4ac1      	ldr	r2, [pc, #772]	; (8000758 <foc_loop+0x3bc>)
         I_u = I_u_accum >> ADC_FILT_LVL;
- 8000452:	49c2      	ldr	r1, [pc, #776]	; (800075c <foc_loop+0x3c0>)
-        cont_angle = m_angle + revs;
- 8000454:	189a      	adds	r2, r3, r2
- 8000456:	6002      	str	r2, [r0, #0]
+ 8000454:	49c1      	ldr	r1, [pc, #772]	; (800075c <foc_loop+0x3c0>)
+			cont_angle *= -1;
+ 8000456:	425b      	negs	r3, r3
+ 8000458:	6013      	str	r3, [r2, #0]
+ 800045a:	4693      	mov	fp, r2
         I_u = I_u_accum >> ADC_FILT_LVL;
- 8000458:	680a      	ldr	r2, [r1, #0]
- 800045a:	4bc1      	ldr	r3, [pc, #772]	; (8000760 <foc_loop+0x3c4>)
-        cont_angle = m_angle + revs;
- 800045c:	4683      	mov	fp, r0
-        I_u = I_u_accum >> ADC_FILT_LVL;
- 800045e:	1110      	asrs	r0, r2, #4
- 8000460:	b200      	sxth	r0, r0
- 8000462:	8018      	strh	r0, [r3, #0]
+ 800045c:	680a      	ldr	r2, [r1, #0]
+ 800045e:	4bc0      	ldr	r3, [pc, #768]	; (8000760 <foc_loop+0x3c4>)
+ 8000460:	1110      	asrs	r0, r2, #4
+ 8000462:	b200      	sxth	r0, r0
+ 8000464:	8018      	strh	r0, [r3, #0]
         I_v_accum = I_v_accum - I_v + (p.adc_vals[0] - adc_V_offset);
- 8000464:	4fbf      	ldr	r7, [pc, #764]	; (8000764 <foc_loop+0x3c8>)
+ 8000466:	4fbf      	ldr	r7, [pc, #764]	; (8000764 <foc_loop+0x3c8>)
         I_u = I_u_accum >> ADC_FILT_LVL;
- 8000466:	469a      	mov	sl, r3
+ 8000468:	469a      	mov	sl, r3
         I_u_accum = I_u_accum - I_u + (p.adc_vals[4] - adc_U_offset);
- 8000468:	8ea3      	ldrh	r3, [r4, #52]	; 0x34
+ 800046a:	8ea3      	ldrh	r3, [r4, #52]	; 0x34
         I_v = I_v_accum >> ADC_FILT_LVL;
- 800046a:	4ebf      	ldr	r6, [pc, #764]	; (8000768 <foc_loop+0x3cc>)
+ 800046c:	4ebe      	ldr	r6, [pc, #760]	; (8000768 <foc_loop+0x3cc>)
         I_u_accum = I_u_accum - I_u + (p.adc_vals[4] - adc_U_offset);
- 800046c:	4463      	add	r3, ip
+ 800046e:	4463      	add	r3, ip
         I_v_accum = I_v_accum - I_v + (p.adc_vals[0] - adc_V_offset);
- 800046e:	46bc      	mov	ip, r7
+ 8000470:	46bc      	mov	ip, r7
         I_u_accum = I_u_accum - I_u + (p.adc_vals[4] - adc_U_offset);
- 8000470:	1a12      	subs	r2, r2, r0
- 8000472:	189b      	adds	r3, r3, r2
+ 8000472:	1a12      	subs	r2, r2, r0
+ 8000474:	189b      	adds	r3, r3, r2
         I_v = I_v_accum >> ADC_FILT_LVL;
- 8000474:	6832      	ldr	r2, [r6, #0]
+ 8000476:	6832      	ldr	r2, [r6, #0]
         I_u_accum = I_u_accum - I_u + (p.adc_vals[4] - adc_U_offset);
- 8000476:	600b      	str	r3, [r1, #0]
+ 8000478:	600b      	str	r3, [r1, #0]
         I_v = I_v_accum >> ADC_FILT_LVL;
- 8000478:	4bbc      	ldr	r3, [pc, #752]	; (800076c <foc_loop+0x3d0>)
- 800047a:	1111      	asrs	r1, r2, #4
- 800047c:	b209      	sxth	r1, r1
- 800047e:	8019      	strh	r1, [r3, #0]
- 8000480:	4699      	mov	r9, r3
+ 800047a:	4bbc      	ldr	r3, [pc, #752]	; (800076c <foc_loop+0x3d0>)
+ 800047c:	1111      	asrs	r1, r2, #4
+ 800047e:	b209      	sxth	r1, r1
+ 8000480:	8019      	strh	r1, [r3, #0]
+ 8000482:	4699      	mov	r9, r3
         I_w_accum = I_w_accum - I_w + (p.adc_vals[2] - adc_W_offset);
- 8000482:	4fbb      	ldr	r7, [pc, #748]	; (8000770 <foc_loop+0x3d4>)
+ 8000484:	4fba      	ldr	r7, [pc, #744]	; (8000770 <foc_loop+0x3d4>)
         I_v_accum = I_v_accum - I_v + (p.adc_vals[0] - adc_V_offset);
- 8000484:	8da3      	ldrh	r3, [r4, #44]	; 0x2c
- 8000486:	1a52      	subs	r2, r2, r1
- 8000488:	4463      	add	r3, ip
+ 8000486:	8da3      	ldrh	r3, [r4, #44]	; 0x2c
+ 8000488:	1a52      	subs	r2, r2, r1
+ 800048a:	4463      	add	r3, ip
         I_w_accum = I_w_accum - I_w + (p.adc_vals[2] - adc_W_offset);
- 800048a:	46bc      	mov	ip, r7
+ 800048c:	46bc      	mov	ip, r7
         I_w = I_w_accum >> ADC_FILT_LVL;
- 800048c:	49b9      	ldr	r1, [pc, #740]	; (8000774 <foc_loop+0x3d8>)
+ 800048e:	49b9      	ldr	r1, [pc, #740]	; (8000774 <foc_loop+0x3d8>)
         I_v_accum = I_v_accum - I_v + (p.adc_vals[0] - adc_V_offset);
- 800048e:	189b      	adds	r3, r3, r2
+ 8000490:	189b      	adds	r3, r3, r2
         I_w = I_w_accum >> ADC_FILT_LVL;
- 8000490:	680a      	ldr	r2, [r1, #0]
+ 8000492:	680a      	ldr	r2, [r1, #0]
         I_v_accum = I_v_accum - I_v + (p.adc_vals[0] - adc_V_offset);
- 8000492:	6033      	str	r3, [r6, #0]
+ 8000494:	6033      	str	r3, [r6, #0]
         I_w = I_w_accum >> ADC_FILT_LVL;
- 8000494:	4bb8      	ldr	r3, [pc, #736]	; (8000778 <foc_loop+0x3dc>)
- 8000496:	1116      	asrs	r6, r2, #4
- 8000498:	b236      	sxth	r6, r6
- 800049a:	801e      	strh	r6, [r3, #0]
- 800049c:	4698      	mov	r8, r3
+ 8000496:	4bb8      	ldr	r3, [pc, #736]	; (8000778 <foc_loop+0x3dc>)
+ 8000498:	1116      	asrs	r6, r2, #4
+ 800049a:	b236      	sxth	r6, r6
+ 800049c:	801e      	strh	r6, [r3, #0]
+ 800049e:	4698      	mov	r8, r3
         I_w_accum = I_w_accum - I_w + (p.adc_vals[2] - adc_W_offset);
- 800049e:	8e23      	ldrh	r3, [r4, #48]	; 0x30
- 80004a0:	1b92      	subs	r2, r2, r6
- 80004a2:	4463      	add	r3, ip
- 80004a4:	189b      	adds	r3, r3, r2
- 80004a6:	600b      	str	r3, [r1, #0]
+ 80004a0:	8e23      	ldrh	r3, [r4, #48]	; 0x30
+ 80004a2:	1b92      	subs	r2, r2, r6
+ 80004a4:	4463      	add	r3, ip
+ 80004a6:	189b      	adds	r3, r3, r2
+ 80004a8:	600b      	str	r3, [r1, #0]
         I_phase = abs16(I_u);
- 80004a8:	f000 ff88 	bl	80013bc <abs16>
+ 80004aa:	f000 ff87 	bl	80013bc <abs16>
         if(abs16(I_v) > I_phase) I_phase = abs16(I_v);
- 80004ac:	464b      	mov	r3, r9
+ 80004ae:	464b      	mov	r3, r9
         I_phase = abs16(I_u);
- 80004ae:	4eb3      	ldr	r6, [pc, #716]	; (800077c <foc_loop+0x3e0>)
- 80004b0:	8030      	strh	r0, [r6, #0]
+ 80004b0:	4eb2      	ldr	r6, [pc, #712]	; (800077c <foc_loop+0x3e0>)
+ 80004b2:	8030      	strh	r0, [r6, #0]
         if(abs16(I_v) > I_phase) I_phase = abs16(I_v);
- 80004b2:	2000      	movs	r0, #0
- 80004b4:	5e18      	ldrsh	r0, [r3, r0]
- 80004b6:	f000 ff81 	bl	80013bc <abs16>
- 80004ba:	2200      	movs	r2, #0
- 80004bc:	5eb3      	ldrsh	r3, [r6, r2]
- 80004be:	4283      	cmp	r3, r0
- 80004c0:	da00      	bge.n	80004c4 <foc_loop+0x128>
- 80004c2:	e12f      	b.n	8000724 <foc_loop+0x388>
+ 80004b4:	2000      	movs	r0, #0
+ 80004b6:	5e18      	ldrsh	r0, [r3, r0]
+ 80004b8:	f000 ff80 	bl	80013bc <abs16>
+ 80004bc:	2200      	movs	r2, #0
+ 80004be:	5eb3      	ldrsh	r3, [r6, r2]
+ 80004c0:	4283      	cmp	r3, r0
+ 80004c2:	da00      	bge.n	80004c6 <foc_loop+0x12a>
+ 80004c4:	e12f      	b.n	8000726 <foc_loop+0x38a>
         if(abs16(I_w) > I_phase) I_phase = abs16(I_w);
- 80004c4:	4643      	mov	r3, r8
- 80004c6:	2000      	movs	r0, #0
- 80004c8:	5e18      	ldrsh	r0, [r3, r0]
- 80004ca:	f000 ff77 	bl	80013bc <abs16>
- 80004ce:	2200      	movs	r2, #0
- 80004d0:	5eb3      	ldrsh	r3, [r6, r2]
- 80004d2:	4283      	cmp	r3, r0
- 80004d4:	da00      	bge.n	80004d8 <foc_loop+0x13c>
- 80004d6:	e1b5      	b.n	8000844 <foc_loop+0x4a8>
+ 80004c6:	4643      	mov	r3, r8
+ 80004c8:	2000      	movs	r0, #0
+ 80004ca:	5e18      	ldrsh	r0, [r3, r0]
+ 80004cc:	f000 ff76 	bl	80013bc <abs16>
+ 80004d0:	2200      	movs	r2, #0
+ 80004d2:	5eb3      	ldrsh	r3, [r6, r2]
+ 80004d4:	4283      	cmp	r3, r0
+ 80004d6:	da00      	bge.n	80004da <foc_loop+0x13e>
+ 80004d8:	e1b4      	b.n	8000844 <foc_loop+0x4a8>
         uint8_t angle_lut = e_angle >> 7; // scale e_angle [0,32767] to [0,255] for lookup table
- 80004d8:	882b      	ldrh	r3, [r5, #0]
+ 80004da:	882b      	ldrh	r3, [r5, #0]
         int16_t Q16_sin_t = sin_lut[angle_lut];
- 80004da:	4aa9      	ldr	r2, [pc, #676]	; (8000780 <foc_loop+0x3e4>)
+ 80004dc:	4aa8      	ldr	r2, [pc, #672]	; (8000780 <foc_loop+0x3e4>)
         uint8_t angle_lut = e_angle >> 7; // scale e_angle [0,32767] to [0,255] for lookup table
- 80004dc:	09db      	lsrs	r3, r3, #7
- 80004de:	b2db      	uxtb	r3, r3
+ 80004de:	09db      	lsrs	r3, r3, #7
+ 80004e0:	b2db      	uxtb	r3, r3
         int16_t Q16_sin_t = sin_lut[angle_lut];
- 80004e0:	0059      	lsls	r1, r3, #1
- 80004e2:	5e8f      	ldrsh	r7, [r1, r2]
+ 80004e2:	0059      	lsls	r1, r3, #1
+ 80004e4:	5e8f      	ldrsh	r7, [r1, r2]
             Q16_cos_t = sin_lut[(64 - angle_lut) & (256 - 1)]; /// 64 out of 256 is the equilvalent of /// 90º/360º. &255 is mod256.
- 80004e4:	2140      	movs	r1, #64	; 0x40
+ 80004e6:	2140      	movs	r1, #64	; 0x40
         if (angle_lut < 64) {
- 80004e6:	2b3f      	cmp	r3, #63	; 0x3f
- 80004e8:	d900      	bls.n	80004ec <foc_loop+0x150>
+ 80004e8:	2b3f      	cmp	r3, #63	; 0x3f
+ 80004ea:	d900      	bls.n	80004ee <foc_loop+0x152>
             Q16_cos_t = sin_lut[(63 - angle_lut) & (256 - 1)];
- 80004ea:	213f      	movs	r1, #63	; 0x3f
- 80004ec:	1ac9      	subs	r1, r1, r3
- 80004ee:	23ff      	movs	r3, #255	; 0xff
+ 80004ec:	213f      	movs	r1, #63	; 0x3f
+ 80004ee:	1ac9      	subs	r1, r1, r3
+ 80004f0:	23ff      	movs	r3, #255	; 0xff
         int16_t Q16_SQRT3_2_sin_t = (Q16_SQRT3_2 * Q16_sin_t) >> 16;
- 80004f0:	4da4      	ldr	r5, [pc, #656]	; (8000784 <foc_loop+0x3e8>)
+ 80004f2:	4da4      	ldr	r5, [pc, #656]	; (8000784 <foc_loop+0x3e8>)
             Q16_cos_t = sin_lut[(63 - angle_lut) & (256 - 1)];
- 80004f2:	400b      	ands	r3, r1
- 80004f4:	005b      	lsls	r3, r3, #1
- 80004f6:	5e9a      	ldrsh	r2, [r3, r2]
+ 80004f4:	400b      	ands	r3, r1
+ 80004f6:	005b      	lsls	r3, r3, #1
+ 80004f8:	5e9a      	ldrsh	r2, [r3, r2]
         int16_t Q16_SQRT3_2_sin_t = (Q16_SQRT3_2 * Q16_sin_t) >> 16;
- 80004f8:	002b      	movs	r3, r5
+ 80004fa:	002b      	movs	r3, r5
         I_d = (Q16_cos_t * I_u + (Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * I_v + (-Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * I_w) >> 16;
- 80004fa:	4650      	mov	r0, sl
+ 80004fc:	4650      	mov	r0, sl
         int16_t Q16_SQRT3_2_sin_t = (Q16_SQRT3_2 * Q16_sin_t) >> 16;
- 80004fc:	437b      	muls	r3, r7
+ 80004fe:	437b      	muls	r3, r7
             Q16_cos_t = sin_lut[(63 - angle_lut) & (256 - 1)];
- 80004fe:	9202      	str	r2, [sp, #8]
+ 8000500:	9202      	str	r2, [sp, #8]
         int16_t Q16_SQRT3_2_cos_t = (Q16_SQRT3_2 * Q16_cos_t) >> 16;
- 8000500:	9902      	ldr	r1, [sp, #8]
+ 8000502:	9902      	ldr	r1, [sp, #8]
         I_d = (Q16_cos_t * I_u + (Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * I_v + (-Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * I_w) >> 16;
- 8000502:	2600      	movs	r6, #0
- 8000504:	5f86      	ldrsh	r6, [r0, r6]
+ 8000504:	2600      	movs	r6, #0
+ 8000506:	5f86      	ldrsh	r6, [r0, r6]
         int16_t Q16_SQRT3_2_sin_t = (Q16_SQRT3_2 * Q16_sin_t) >> 16;
- 8000506:	141b      	asrs	r3, r3, #16
+ 8000508:	141b      	asrs	r3, r3, #16
         int16_t Q16_SQRT3_2_cos_t = (Q16_SQRT3_2 * Q16_cos_t) >> 16;
- 8000508:	434d      	muls	r5, r1
+ 800050a:	434d      	muls	r5, r1
         int16_t Q16_1_2_cos_t = (Q16_1_2 * Q16_cos_t) >> 16;
- 800050a:	1049      	asrs	r1, r1, #1
+ 800050c:	1049      	asrs	r1, r1, #1
         I_d = (Q16_cos_t * I_u + (Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * I_v + (-Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * I_w) >> 16;
- 800050c:	46b2      	mov	sl, r6
- 800050e:	9303      	str	r3, [sp, #12]
- 8000510:	1a5e      	subs	r6, r3, r1
- 8000512:	464b      	mov	r3, r9
+ 800050e:	46b2      	mov	sl, r6
+ 8000510:	9303      	str	r3, [sp, #12]
+ 8000512:	1a5e      	subs	r6, r3, r1
+ 8000514:	464b      	mov	r3, r9
         int16_t Q16_SQRT3_2_cos_t = (Q16_SQRT3_2 * Q16_cos_t) >> 16;
- 8000514:	142d      	asrs	r5, r5, #16
+ 8000516:	142d      	asrs	r5, r5, #16
         int16_t Q16_1_2_sin_t = (Q16_1_2 * Q16_sin_t) >> 16;
- 8000516:	107a      	asrs	r2, r7, #1
+ 8000518:	107a      	asrs	r2, r7, #1
         I_d = (Q16_cos_t * I_u + (Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * I_v + (-Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * I_w) >> 16;
- 8000518:	9105      	str	r1, [sp, #20]
- 800051a:	2000      	movs	r0, #0
- 800051c:	5e19      	ldrsh	r1, [r3, r0]
- 800051e:	4643      	mov	r3, r8
+ 800051a:	9105      	str	r1, [sp, #20]
+ 800051c:	2000      	movs	r0, #0
+ 800051e:	5e19      	ldrsh	r1, [r3, r0]
+ 8000520:	4643      	mov	r3, r8
         I_q = (Q16_sin_t * I_u + (-Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * I_v + (Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * I_w) >> 16;
- 8000520:	9204      	str	r2, [sp, #16]
- 8000522:	1aaa      	subs	r2, r5, r2
- 8000524:	9206      	str	r2, [sp, #24]
+ 8000522:	9204      	str	r2, [sp, #16]
+ 8000524:	1aaa      	subs	r2, r5, r2
+ 8000526:	9206      	str	r2, [sp, #24]
         I_d = (Q16_cos_t * I_u + (Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * I_v + (-Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * I_w) >> 16;
- 8000526:	4652      	mov	r2, sl
- 8000528:	9607      	str	r6, [sp, #28]
- 800052a:	434e      	muls	r6, r1
- 800052c:	46b4      	mov	ip, r6
- 800052e:	9e03      	ldr	r6, [sp, #12]
- 8000530:	2000      	movs	r0, #0
- 8000532:	5e1b      	ldrsh	r3, [r3, r0]
- 8000534:	9802      	ldr	r0, [sp, #8]
- 8000536:	4276      	negs	r6, r6
- 8000538:	4342      	muls	r2, r0
- 800053a:	0030      	movs	r0, r6
- 800053c:	9e05      	ldr	r6, [sp, #20]
- 800053e:	4462      	add	r2, ip
- 8000540:	1b86      	subs	r6, r0, r6
- 8000542:	435e      	muls	r6, r3
- 8000544:	46b4      	mov	ip, r6
+ 8000528:	4652      	mov	r2, sl
+ 800052a:	9607      	str	r6, [sp, #28]
+ 800052c:	434e      	muls	r6, r1
+ 800052e:	46b4      	mov	ip, r6
+ 8000530:	9e03      	ldr	r6, [sp, #12]
+ 8000532:	2000      	movs	r0, #0
+ 8000534:	5e1b      	ldrsh	r3, [r3, r0]
+ 8000536:	9802      	ldr	r0, [sp, #8]
+ 8000538:	4276      	negs	r6, r6
+ 800053a:	4342      	muls	r2, r0
+ 800053c:	0030      	movs	r0, r6
+ 800053e:	9e05      	ldr	r6, [sp, #20]
+ 8000540:	4462      	add	r2, ip
+ 8000542:	1b86      	subs	r6, r0, r6
+ 8000544:	435e      	muls	r6, r3
+ 8000546:	46b4      	mov	ip, r6
         I_d = (I_d * Q16_2_3) >> 15;
- 8000546:	4890      	ldr	r0, [pc, #576]	; (8000788 <foc_loop+0x3ec>)
+ 8000548:	488f      	ldr	r0, [pc, #572]	; (8000788 <foc_loop+0x3ec>)
         I_d = (Q16_cos_t * I_u + (Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * I_v + (-Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * I_w) >> 16;
- 8000548:	4462      	add	r2, ip
+ 800054a:	4462      	add	r2, ip
         I_q = (Q16_sin_t * I_u + (-Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * I_v + (Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * I_w) >> 16;
- 800054a:	9e04      	ldr	r6, [sp, #16]
+ 800054c:	9e04      	ldr	r6, [sp, #16]
         I_d = (Q16_cos_t * I_u + (Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * I_v + (-Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * I_w) >> 16;
- 800054c:	1412      	asrs	r2, r2, #16
+ 800054e:	1412      	asrs	r2, r2, #16
         I_d = (I_d * Q16_2_3) >> 15;
- 800054e:	4342      	muls	r2, r0
+ 8000550:	4342      	muls	r2, r0
         I_q = (Q16_sin_t * I_u + (-Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * I_v + (Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * I_w) >> 16;
- 8000550:	4268      	negs	r0, r5
- 8000552:	1b80      	subs	r0, r0, r6
- 8000554:	4341      	muls	r1, r0
- 8000556:	4650      	mov	r0, sl
- 8000558:	4378      	muls	r0, r7
- 800055a:	1809      	adds	r1, r1, r0
- 800055c:	9806      	ldr	r0, [sp, #24]
+ 8000552:	4268      	negs	r0, r5
+ 8000554:	1b80      	subs	r0, r0, r6
+ 8000556:	4341      	muls	r1, r0
+ 8000558:	4650      	mov	r0, sl
+ 800055a:	4378      	muls	r0, r7
+ 800055c:	1809      	adds	r1, r1, r0
+ 800055e:	9806      	ldr	r0, [sp, #24]
         I_d = (I_d * Q16_2_3) >> 15;
- 800055e:	13d2      	asrs	r2, r2, #15
+ 8000560:	13d2      	asrs	r2, r2, #15
         I_q = (Q16_sin_t * I_u + (-Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * I_v + (Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * I_w) >> 16;
- 8000560:	4343      	muls	r3, r0
- 8000562:	18c9      	adds	r1, r1, r3
- 8000564:	1409      	asrs	r1, r1, #16
+ 8000562:	4343      	muls	r3, r0
+ 8000564:	18c9      	adds	r1, r1, r3
+ 8000566:	1409      	asrs	r1, r1, #16
         I_q = (I_q * -Q16_2_3) >> 15;
- 8000566:	010b      	lsls	r3, r1, #4
- 8000568:	1a5b      	subs	r3, r3, r1
- 800056a:	039b      	lsls	r3, r3, #14
- 800056c:	185b      	adds	r3, r3, r1
- 800056e:	009b      	lsls	r3, r3, #2
- 8000570:	185b      	adds	r3, r3, r1
- 8000572:	0119      	lsls	r1, r3, #4
+ 8000568:	010b      	lsls	r3, r1, #4
+ 800056a:	1a5b      	subs	r3, r3, r1
+ 800056c:	039b      	lsls	r3, r3, #14
+ 800056e:	185b      	adds	r3, r3, r1
+ 8000570:	009b      	lsls	r3, r3, #2
+ 8000572:	185b      	adds	r3, r3, r1
+ 8000574:	0119      	lsls	r1, r3, #4
         I_d_filt = I_d_accum >> DQ_FILT_LVL;
- 8000574:	4885      	ldr	r0, [pc, #532]	; (800078c <foc_loop+0x3f0>)
+ 8000576:	4885      	ldr	r0, [pc, #532]	; (800078c <foc_loop+0x3f0>)
         I_q = (I_q * -Q16_2_3) >> 15;
- 8000576:	185b      	adds	r3, r3, r1
- 8000578:	0219      	lsls	r1, r3, #8
- 800057a:	185b      	adds	r3, r3, r1
+ 8000578:	185b      	adds	r3, r3, r1
+ 800057a:	0219      	lsls	r1, r3, #8
+ 800057c:	185b      	adds	r3, r3, r1
         I_d_filt = I_d_accum >> DQ_FILT_LVL;
- 800057c:	6801      	ldr	r1, [r0, #0]
+ 800057e:	6801      	ldr	r1, [r0, #0]
         I_q = (I_q * -Q16_2_3) >> 15;
- 800057e:	13db      	asrs	r3, r3, #15
+ 8000580:	13db      	asrs	r3, r3, #15
         I_d_filt = I_d_accum >> DQ_FILT_LVL;
- 8000580:	120e      	asrs	r6, r1, #8
+ 8000582:	120e      	asrs	r6, r1, #8
         I_d_accum = I_d_accum - I_d_filt + I_d;
- 8000582:	b236      	sxth	r6, r6
- 8000584:	1b89      	subs	r1, r1, r6
- 8000586:	b216      	sxth	r6, r2
- 8000588:	46b4      	mov	ip, r6
- 800058a:	4461      	add	r1, ip
- 800058c:	6001      	str	r1, [r0, #0]
+ 8000584:	b236      	sxth	r6, r6
+ 8000586:	1b89      	subs	r1, r1, r6
+ 8000588:	b216      	sxth	r6, r2
+ 800058a:	46b4      	mov	ip, r6
+ 800058c:	4461      	add	r1, ip
+ 800058e:	6001      	str	r1, [r0, #0]
         I_q_filt = I_q_accum >> DQ_FILT_LVL;
- 800058e:	4880      	ldr	r0, [pc, #512]	; (8000790 <foc_loop+0x3f4>)
- 8000590:	6801      	ldr	r1, [r0, #0]
- 8000592:	120e      	asrs	r6, r1, #8
+ 8000590:	487f      	ldr	r0, [pc, #508]	; (8000790 <foc_loop+0x3f4>)
+ 8000592:	6801      	ldr	r1, [r0, #0]
+ 8000594:	120e      	asrs	r6, r1, #8
         I_q_accum = I_q_accum - I_q_filt + I_q;
- 8000594:	b236      	sxth	r6, r6
- 8000596:	1b89      	subs	r1, r1, r6
- 8000598:	b21e      	sxth	r6, r3
- 800059a:	46b4      	mov	ip, r6
- 800059c:	4461      	add	r1, ip
- 800059e:	6001      	str	r1, [r0, #0]
+ 8000596:	b236      	sxth	r6, r6
+ 8000598:	1b89      	subs	r1, r1, r6
+ 800059a:	b21e      	sxth	r6, r3
+ 800059c:	46b4      	mov	ip, r6
+ 800059e:	4461      	add	r1, ip
+ 80005a0:	6001      	str	r1, [r0, #0]
         I_q_error = I_q_des - I_q;
- 80005a0:	487c      	ldr	r0, [pc, #496]	; (8000794 <foc_loop+0x3f8>)
- 80005a2:	497d      	ldr	r1, [pc, #500]	; (8000798 <foc_loop+0x3fc>)
- 80005a4:	4682      	mov	sl, r0
- 80005a6:	8800      	ldrh	r0, [r0, #0]
- 80005a8:	4688      	mov	r8, r1
- 80005aa:	1ac3      	subs	r3, r0, r3
- 80005ac:	800b      	strh	r3, [r1, #0]
+ 80005a2:	487c      	ldr	r0, [pc, #496]	; (8000794 <foc_loop+0x3f8>)
+ 80005a4:	497c      	ldr	r1, [pc, #496]	; (8000798 <foc_loop+0x3fc>)
+ 80005a6:	4682      	mov	sl, r0
+ 80005a8:	8800      	ldrh	r0, [r0, #0]
+ 80005aa:	4688      	mov	r8, r1
+ 80005ac:	1ac3      	subs	r3, r0, r3
+ 80005ae:	800b      	strh	r3, [r1, #0]
         I_d_error_int = clip(I_d_error_int + (I_d_error >> 10), -32768, 32767);
- 80005ae:	4b7b      	ldr	r3, [pc, #492]	; (800079c <foc_loop+0x400>)
+ 80005b0:	4b7a      	ldr	r3, [pc, #488]	; (800079c <foc_loop+0x400>)
         I_d_error = I_d_des - I_d;
- 80005b0:	4250      	negs	r0, r2
+ 80005b2:	4250      	negs	r0, r2
         I_d_error_int = clip(I_d_error_int + (I_d_error >> 10), -32768, 32767);
- 80005b2:	4699      	mov	r9, r3
- 80005b4:	b200      	sxth	r0, r0
- 80005b6:	681b      	ldr	r3, [r3, #0]
- 80005b8:	1280      	asrs	r0, r0, #10
- 80005ba:	4a79      	ldr	r2, [pc, #484]	; (80007a0 <foc_loop+0x404>)
- 80005bc:	4979      	ldr	r1, [pc, #484]	; (80007a4 <foc_loop+0x408>)
- 80005be:	18c0      	adds	r0, r0, r3
- 80005c0:	f000 fee2 	bl	8001388 <clip>
- 80005c4:	464b      	mov	r3, r9
- 80005c6:	6018      	str	r0, [r3, #0]
+ 80005b4:	4699      	mov	r9, r3
+ 80005b6:	b200      	sxth	r0, r0
+ 80005b8:	681b      	ldr	r3, [r3, #0]
+ 80005ba:	1280      	asrs	r0, r0, #10
+ 80005bc:	4a78      	ldr	r2, [pc, #480]	; (80007a0 <foc_loop+0x404>)
+ 80005be:	4979      	ldr	r1, [pc, #484]	; (80007a4 <foc_loop+0x408>)
+ 80005c0:	18c0      	adds	r0, r0, r3
+ 80005c2:	f000 fee1 	bl	8001388 <clip>
+ 80005c6:	464b      	mov	r3, r9
+ 80005c8:	6018      	str	r0, [r3, #0]
         I_q_error_int = clip(I_q_error_int + (I_q_error >> 10), -32768, 32767);
- 80005c8:	4643      	mov	r3, r8
- 80005ca:	2000      	movs	r0, #0
- 80005cc:	5e18      	ldrsh	r0, [r3, r0]
- 80005ce:	4b76      	ldr	r3, [pc, #472]	; (80007a8 <foc_loop+0x40c>)
- 80005d0:	1280      	asrs	r0, r0, #10
- 80005d2:	4698      	mov	r8, r3
- 80005d4:	681b      	ldr	r3, [r3, #0]
- 80005d6:	4a72      	ldr	r2, [pc, #456]	; (80007a0 <foc_loop+0x404>)
- 80005d8:	4972      	ldr	r1, [pc, #456]	; (80007a4 <foc_loop+0x408>)
- 80005da:	18c0      	adds	r0, r0, r3
- 80005dc:	f000 fed4 	bl	8001388 <clip>
- 80005e0:	4643      	mov	r3, r8
- 80005e2:	6018      	str	r0, [r3, #0]
+ 80005ca:	4643      	mov	r3, r8
+ 80005cc:	2000      	movs	r0, #0
+ 80005ce:	5e18      	ldrsh	r0, [r3, r0]
+ 80005d0:	4b75      	ldr	r3, [pc, #468]	; (80007a8 <foc_loop+0x40c>)
+ 80005d2:	1280      	asrs	r0, r0, #10
+ 80005d4:	4698      	mov	r8, r3
+ 80005d6:	681b      	ldr	r3, [r3, #0]
+ 80005d8:	4a71      	ldr	r2, [pc, #452]	; (80007a0 <foc_loop+0x404>)
+ 80005da:	4972      	ldr	r1, [pc, #456]	; (80007a4 <foc_loop+0x408>)
+ 80005dc:	18c0      	adds	r0, r0, r3
+ 80005de:	f000 fed3 	bl	8001388 <clip>
+ 80005e2:	4643      	mov	r3, r8
+ 80005e4:	6018      	str	r0, [r3, #0]
         V_d = ((KP_d * I_d_error) >> 16) + ((KI_d * I_d_error_int) >> 16) + ((KF_d * I_d_des) >> 16);
- 80005e4:	2300      	movs	r3, #0
- 80005e6:	4a71      	ldr	r2, [pc, #452]	; (80007ac <foc_loop+0x410>)
+ 80005e6:	2300      	movs	r3, #0
+ 80005e8:	4a70      	ldr	r2, [pc, #448]	; (80007ac <foc_loop+0x410>)
         V_d = clip(V_d, -32768, 32767);
- 80005e8:	496e      	ldr	r1, [pc, #440]	; (80007a4 <foc_loop+0x408>)
+ 80005ea:	496e      	ldr	r1, [pc, #440]	; (80007a4 <foc_loop+0x408>)
         V_d = ((KP_d * I_d_error) >> 16) + ((KI_d * I_d_error_int) >> 16) + ((KF_d * I_d_des) >> 16);
- 80005ea:	8013      	strh	r3, [r2, #0]
+ 80005ec:	8013      	strh	r3, [r2, #0]
         V_q = ((KP_q * I_q_error) >> 16) + ((KI_q * I_q_error_int) >> 16) + ((KF_q * I_q_des) >> 16);
- 80005ec:	4653      	mov	r3, sl
+ 80005ee:	4653      	mov	r3, sl
         V_d = ((KP_d * I_d_error) >> 16) + ((KI_d * I_d_error_int) >> 16) + ((KF_d * I_d_des) >> 16);
- 80005ee:	4690      	mov	r8, r2
+ 80005f0:	4690      	mov	r8, r2
         V_q = ((KP_q * I_q_error) >> 16) + ((KI_q * I_q_error_int) >> 16) + ((KF_q * I_q_des) >> 16);
- 80005f0:	2000      	movs	r0, #0
- 80005f2:	5e1b      	ldrsh	r3, [r3, r0]
- 80005f4:	4a6e      	ldr	r2, [pc, #440]	; (80007b0 <foc_loop+0x414>)
- 80005f6:	01db      	lsls	r3, r3, #7
- 80005f8:	4691      	mov	r9, r2
- 80005fa:	8013      	strh	r3, [r2, #0]
+ 80005f2:	2000      	movs	r0, #0
+ 80005f4:	5e1b      	ldrsh	r3, [r3, r0]
+ 80005f6:	4a6e      	ldr	r2, [pc, #440]	; (80007b0 <foc_loop+0x414>)
+ 80005f8:	01db      	lsls	r3, r3, #7
+ 80005fa:	4691      	mov	r9, r2
+ 80005fc:	8013      	strh	r3, [r2, #0]
         V_d = clip(V_d, -32768, 32767);
- 80005fc:	2000      	movs	r0, #0
- 80005fe:	4a68      	ldr	r2, [pc, #416]	; (80007a0 <foc_loop+0x404>)
- 8000600:	f000 fec2 	bl	8001388 <clip>
- 8000604:	4643      	mov	r3, r8
- 8000606:	8018      	strh	r0, [r3, #0]
+ 80005fe:	2000      	movs	r0, #0
+ 8000600:	4a67      	ldr	r2, [pc, #412]	; (80007a0 <foc_loop+0x404>)
+ 8000602:	f000 fec1 	bl	8001388 <clip>
+ 8000606:	4643      	mov	r3, r8
+ 8000608:	8018      	strh	r0, [r3, #0]
         V_q = clip(V_q, -32768, 32767);
- 8000608:	464b      	mov	r3, r9
- 800060a:	4a65      	ldr	r2, [pc, #404]	; (80007a0 <foc_loop+0x404>)
- 800060c:	2000      	movs	r0, #0
- 800060e:	5e18      	ldrsh	r0, [r3, r0]
- 8000610:	4964      	ldr	r1, [pc, #400]	; (80007a4 <foc_loop+0x408>)
- 8000612:	f000 feb9 	bl	8001388 <clip>
- 8000616:	464a      	mov	r2, r9
- 8000618:	b203      	sxth	r3, r0
- 800061a:	8013      	strh	r3, [r2, #0]
+ 800060a:	464b      	mov	r3, r9
+ 800060c:	4a64      	ldr	r2, [pc, #400]	; (80007a0 <foc_loop+0x404>)
+ 800060e:	2000      	movs	r0, #0
+ 8000610:	5e18      	ldrsh	r0, [r3, r0]
+ 8000612:	4964      	ldr	r1, [pc, #400]	; (80007a4 <foc_loop+0x408>)
+ 8000614:	f000 feb8 	bl	8001388 <clip>
+ 8000618:	464a      	mov	r2, r9
+ 800061a:	b203      	sxth	r3, r0
+ 800061c:	8013      	strh	r3, [r2, #0]
         V_u = (Q16_cos_t * V_d - Q16_sin_t * V_q) >> 15;
- 800061c:	4642      	mov	r2, r8
- 800061e:	9e02      	ldr	r6, [sp, #8]
- 8000620:	2000      	movs	r0, #0
- 8000622:	5e12      	ldrsh	r2, [r2, r0]
- 8000624:	435f      	muls	r7, r3
- 8000626:	4356      	muls	r6, r2
+ 800061e:	4642      	mov	r2, r8
+ 8000620:	9e02      	ldr	r6, [sp, #8]
+ 8000622:	2000      	movs	r0, #0
+ 8000624:	5e12      	ldrsh	r2, [r2, r0]
+ 8000626:	435f      	muls	r7, r3
+ 8000628:	4356      	muls	r6, r2
         V_v = ((Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * V_d + (Q16_SQRT3_2_cos_t + Q16_1_2_sin_t) * V_q) >> 15;
- 8000628:	9904      	ldr	r1, [sp, #16]
+ 800062a:	9904      	ldr	r1, [sp, #16]
         V_u = (Q16_cos_t * V_d - Q16_sin_t * V_q) >> 15;
- 800062a:	1bf0      	subs	r0, r6, r7
+ 800062c:	1bf0      	subs	r0, r6, r7
         V_v = ((Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * V_d + (Q16_SQRT3_2_cos_t + Q16_1_2_sin_t) * V_q) >> 15;
- 800062c:	9e07      	ldr	r6, [sp, #28]
- 800062e:	1869      	adds	r1, r5, r1
- 8000630:	4356      	muls	r6, r2
- 8000632:	4359      	muls	r1, r3
- 8000634:	1989      	adds	r1, r1, r6
- 8000636:	4e5f      	ldr	r6, [pc, #380]	; (80007b4 <foc_loop+0x418>)
- 8000638:	13c9      	asrs	r1, r1, #15
- 800063a:	4688      	mov	r8, r1
- 800063c:	6031      	str	r1, [r6, #0]
+ 800062e:	9e07      	ldr	r6, [sp, #28]
+ 8000630:	1869      	adds	r1, r5, r1
+ 8000632:	4356      	muls	r6, r2
+ 8000634:	4359      	muls	r1, r3
+ 8000636:	1989      	adds	r1, r1, r6
+ 8000638:	4e5e      	ldr	r6, [pc, #376]	; (80007b4 <foc_loop+0x418>)
+ 800063a:	13c9      	asrs	r1, r1, #15
+ 800063c:	4688      	mov	r8, r1
+ 800063e:	6031      	str	r1, [r6, #0]
         V_w = (-(Q16_SQRT3_2_sin_t + Q16_1_2_cos_t) * V_d - (Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * V_q) >> 15;
- 800063e:	9905      	ldr	r1, [sp, #20]
- 8000640:	9d03      	ldr	r5, [sp, #12]
- 8000642:	468c      	mov	ip, r1
- 8000644:	9906      	ldr	r1, [sp, #24]
- 8000646:	4465      	add	r5, ip
- 8000648:	426d      	negs	r5, r5
- 800064a:	434b      	muls	r3, r1
- 800064c:	436a      	muls	r2, r5
+ 8000640:	9905      	ldr	r1, [sp, #20]
+ 8000642:	9d03      	ldr	r5, [sp, #12]
+ 8000644:	468c      	mov	ip, r1
+ 8000646:	9906      	ldr	r1, [sp, #24]
+ 8000648:	4465      	add	r5, ip
+ 800064a:	426d      	negs	r5, r5
+ 800064c:	434b      	muls	r3, r1
+ 800064e:	436a      	muls	r2, r5
         V_u = (Q16_cos_t * V_d - Q16_sin_t * V_q) >> 15;
- 800064e:	4f5a      	ldr	r7, [pc, #360]	; (80007b8 <foc_loop+0x41c>)
+ 8000650:	4f59      	ldr	r7, [pc, #356]	; (80007b8 <foc_loop+0x41c>)
         V_w = (-(Q16_SQRT3_2_sin_t + Q16_1_2_cos_t) * V_d - (Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * V_q) >> 15;
- 8000650:	4d5a      	ldr	r5, [pc, #360]	; (80007bc <foc_loop+0x420>)
- 8000652:	1ad2      	subs	r2, r2, r3
+ 8000652:	4d5a      	ldr	r5, [pc, #360]	; (80007bc <foc_loop+0x420>)
+ 8000654:	1ad2      	subs	r2, r2, r3
         V_offset = (min3(V_u, V_v, V_w) + max3(V_u, V_v, V_w)) >> 1;
- 8000654:	4641      	mov	r1, r8
+ 8000656:	4641      	mov	r1, r8
         V_w = (-(Q16_SQRT3_2_sin_t + Q16_1_2_cos_t) * V_d - (Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * V_q) >> 15;
- 8000656:	13d2      	asrs	r2, r2, #15
+ 8000658:	13d2      	asrs	r2, r2, #15
         V_u = (Q16_cos_t * V_d - Q16_sin_t * V_q) >> 15;
- 8000658:	13c0      	asrs	r0, r0, #15
+ 800065a:	13c0      	asrs	r0, r0, #15
         V_w = (-(Q16_SQRT3_2_sin_t + Q16_1_2_cos_t) * V_d - (Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * V_q) >> 15;
- 800065a:	602a      	str	r2, [r5, #0]
+ 800065c:	602a      	str	r2, [r5, #0]
         V_u = (Q16_cos_t * V_d - Q16_sin_t * V_q) >> 15;
- 800065c:	6038      	str	r0, [r7, #0]
+ 800065e:	6038      	str	r0, [r7, #0]
         V_offset = (min3(V_u, V_v, V_w) + max3(V_u, V_v, V_w)) >> 1;
- 800065e:	f000 fe9d 	bl	800139c <min3>
- 8000662:	682a      	ldr	r2, [r5, #0]
- 8000664:	6831      	ldr	r1, [r6, #0]
- 8000666:	4680      	mov	r8, r0
- 8000668:	6838      	ldr	r0, [r7, #0]
- 800066a:	f000 fe9f 	bl	80013ac <max3>
+ 8000660:	f000 fe9c 	bl	800139c <min3>
+ 8000664:	682a      	ldr	r2, [r5, #0]
+ 8000666:	6831      	ldr	r1, [r6, #0]
+ 8000668:	4680      	mov	r8, r0
+ 800066a:	6838      	ldr	r0, [r7, #0]
+ 800066c:	f000 fe9e 	bl	80013ac <max3>
         D_w = ((V_w - V_offset) >> log2_V_per_D) + D_mid;
- 800066e:	682b      	ldr	r3, [r5, #0]
+ 8000670:	682b      	ldr	r3, [r5, #0]
         if(I_q_des == 0 || overtemp){
- 8000670:	4655      	mov	r5, sl
+ 8000672:	4655      	mov	r5, sl
         D_v = ((V_v - V_offset) >> log2_V_per_D) + D_mid;
- 8000672:	6832      	ldr	r2, [r6, #0]
+ 8000674:	6832      	ldr	r2, [r6, #0]
         if(I_q_des == 0 || overtemp){
- 8000674:	2600      	movs	r6, #0
- 8000676:	5fad      	ldrsh	r5, [r5, r6]
+ 8000676:	2600      	movs	r6, #0
+ 8000678:	5fad      	ldrsh	r5, [r5, r6]
         D_u = ((V_u - V_offset) >> log2_V_per_D) + D_mid;
- 8000678:	6839      	ldr	r1, [r7, #0]
+ 800067a:	6839      	ldr	r1, [r7, #0]
         if(I_q_des == 0 || overtemp){
- 800067a:	2d00      	cmp	r5, #0
- 800067c:	d131      	bne.n	80006e2 <foc_loop+0x346>
- 800067e:	4d50      	ldr	r5, [pc, #320]	; (80007c0 <foc_loop+0x424>)
+ 800067c:	2d00      	cmp	r5, #0
+ 800067e:	d131      	bne.n	80006e4 <foc_loop+0x348>
+ 8000680:	4d4f      	ldr	r5, [pc, #316]	; (80007c0 <foc_loop+0x424>)
             TIM1->CCR1 = 0;
- 8000680:	2200      	movs	r2, #0
- 8000682:	4b50      	ldr	r3, [pc, #320]	; (80007c4 <foc_loop+0x428>)
- 8000684:	635a      	str	r2, [r3, #52]	; 0x34
+ 8000682:	2200      	movs	r2, #0
+ 8000684:	4b4f      	ldr	r3, [pc, #316]	; (80007c4 <foc_loop+0x428>)
+ 8000686:	635a      	str	r2, [r3, #52]	; 0x34
             TIM1->CCR2 = 0;
- 8000686:	639a      	str	r2, [r3, #56]	; 0x38
+ 8000688:	639a      	str	r2, [r3, #56]	; 0x38
             TIM1->CCR3 = 0;
- 8000688:	63da      	str	r2, [r3, #60]	; 0x3c
+ 800068a:	63da      	str	r2, [r3, #60]	; 0x3c
         temp_pcb = temp_pcb_accum >> TEMP_FILT_LVL;
- 800068a:	494f      	ldr	r1, [pc, #316]	; (80007c8 <foc_loop+0x42c>)
- 800068c:	680b      	ldr	r3, [r1, #0]
- 800068e:	121a      	asrs	r2, r3, #8
+ 800068c:	494e      	ldr	r1, [pc, #312]	; (80007c8 <foc_loop+0x42c>)
+ 800068e:	680b      	ldr	r3, [r1, #0]
+ 8000690:	121a      	asrs	r2, r3, #8
         temp_pcb_accum = temp_pcb_accum - temp_pcb + p.adc_vals[5];
- 8000690:	b212      	sxth	r2, r2
- 8000692:	1a9b      	subs	r3, r3, r2
- 8000694:	8ee2      	ldrh	r2, [r4, #54]	; 0x36
- 8000696:	189b      	adds	r3, r3, r2
- 8000698:	600b      	str	r3, [r1, #0]
+ 8000692:	b212      	sxth	r2, r2
+ 8000694:	1a9b      	subs	r3, r3, r2
+ 8000696:	8ee2      	ldrh	r2, [r4, #54]	; 0x36
+ 8000698:	189b      	adds	r3, r3, r2
+ 800069a:	600b      	str	r3, [r1, #0]
     if (p.uart_received_flag) {
- 800069a:	2341      	movs	r3, #65	; 0x41
- 800069c:	5ce2      	ldrb	r2, [r4, r3]
- 800069e:	2a00      	cmp	r2, #0
- 80006a0:	d000      	beq.n	80006a4 <foc_loop+0x308>
- 80006a2:	e093      	b.n	80007cc <foc_loop+0x430>
+ 800069c:	2341      	movs	r3, #65	; 0x41
+ 800069e:	5ce2      	ldrb	r2, [r4, r3]
+ 80006a0:	2a00      	cmp	r2, #0
+ 80006a2:	d000      	beq.n	80006a6 <foc_loop+0x30a>
+ 80006a4:	e092      	b.n	80007cc <foc_loop+0x430>
     if(overtemp){
- 80006a4:	782b      	ldrb	r3, [r5, #0]
- 80006a6:	2b00      	cmp	r3, #0
- 80006a8:	d015      	beq.n	80006d6 <foc_loop+0x33a>
+ 80006a6:	782b      	ldrb	r3, [r5, #0]
+ 80006a8:	2b00      	cmp	r3, #0
+ 80006aa:	d015      	beq.n	80006d8 <foc_loop+0x33c>
         LED_RED;
- 80006aa:	2201      	movs	r2, #1
- 80006ac:	2101      	movs	r1, #1
- 80006ae:	4823      	ldr	r0, [pc, #140]	; (800073c <foc_loop+0x3a0>)
- 80006b0:	f001 fc92 	bl	8001fd8 <HAL_GPIO_WritePin>
- 80006b4:	e67e      	b.n	80003b4 <foc_loop+0x18>
+ 80006ac:	2201      	movs	r2, #1
+ 80006ae:	2101      	movs	r1, #1
+ 80006b0:	4822      	ldr	r0, [pc, #136]	; (800073c <foc_loop+0x3a0>)
+ 80006b2:	f001 fc91 	bl	8001fd8 <HAL_GPIO_WritePin>
+ 80006b6:	e67d      	b.n	80003b4 <foc_loop+0x18>
         } else if (m_angle < 8192 && m_angle_prev > 24576) {
- 80006b6:	4293      	cmp	r3, r2
- 80006b8:	d300      	bcc.n	80006bc <foc_loop+0x320>
- 80006ba:	e6c4      	b.n	8000446 <foc_loop+0xaa>
- 80006bc:	22c0      	movs	r2, #192	; 0xc0
- 80006be:	01d2      	lsls	r2, r2, #7
- 80006c0:	4290      	cmp	r0, r2
- 80006c2:	d800      	bhi.n	80006c6 <foc_loop+0x32a>
- 80006c4:	e6bf      	b.n	8000446 <foc_loop+0xaa>
+ 80006b8:	428b      	cmp	r3, r1
+ 80006ba:	d300      	bcc.n	80006be <foc_loop+0x322>
+ 80006bc:	e6c0      	b.n	8000440 <foc_loop+0xa4>
+ 80006be:	21c0      	movs	r1, #192	; 0xc0
+ 80006c0:	01c9      	lsls	r1, r1, #7
+ 80006c2:	428d      	cmp	r5, r1
+ 80006c4:	d800      	bhi.n	80006c8 <foc_loop+0x32c>
+ 80006c6:	e6bb      	b.n	8000440 <foc_loop+0xa4>
             revs += 32768;
- 80006c6:	2680      	movs	r6, #128	; 0x80
- 80006c8:	0236      	lsls	r6, r6, #8
- 80006ca:	46b4      	mov	ip, r6
- 80006cc:	4820      	ldr	r0, [pc, #128]	; (8000750 <foc_loop+0x3b4>)
- 80006ce:	6802      	ldr	r2, [r0, #0]
- 80006d0:	4462      	add	r2, ip
- 80006d2:	6002      	str	r2, [r0, #0]
- 80006d4:	e6b9      	b.n	800044a <foc_loop+0xae>
+ 80006c8:	2680      	movs	r6, #128	; 0x80
+ 80006ca:	0236      	lsls	r6, r6, #8
+ 80006cc:	46b4      	mov	ip, r6
+ 80006ce:	4d1f      	ldr	r5, [pc, #124]	; (800074c <foc_loop+0x3b0>)
+ 80006d0:	6829      	ldr	r1, [r5, #0]
+ 80006d2:	4461      	add	r1, ip
+ 80006d4:	6029      	str	r1, [r5, #0]
+ 80006d6:	e6b5      	b.n	8000444 <foc_loop+0xa8>
     	LED_GREEN;
- 80006d6:	2200      	movs	r2, #0
- 80006d8:	2101      	movs	r1, #1
- 80006da:	4818      	ldr	r0, [pc, #96]	; (800073c <foc_loop+0x3a0>)
- 80006dc:	f001 fc7c 	bl	8001fd8 <HAL_GPIO_WritePin>
- 80006e0:	e668      	b.n	80003b4 <foc_loop+0x18>
+ 80006d8:	2200      	movs	r2, #0
+ 80006da:	2101      	movs	r1, #1
+ 80006dc:	4817      	ldr	r0, [pc, #92]	; (800073c <foc_loop+0x3a0>)
+ 80006de:	f001 fc7b 	bl	8001fd8 <HAL_GPIO_WritePin>
+ 80006e2:	e667      	b.n	80003b4 <foc_loop+0x18>
         if(I_q_des == 0 || overtemp){
- 80006e2:	4d37      	ldr	r5, [pc, #220]	; (80007c0 <foc_loop+0x424>)
- 80006e4:	782e      	ldrb	r6, [r5, #0]
- 80006e6:	2e00      	cmp	r6, #0
- 80006e8:	d1ca      	bne.n	8000680 <foc_loop+0x2e4>
+ 80006e4:	4d36      	ldr	r5, [pc, #216]	; (80007c0 <foc_loop+0x424>)
+ 80006e6:	782e      	ldrb	r6, [r5, #0]
+ 80006e8:	2e00      	cmp	r6, #0
+ 80006ea:	d1ca      	bne.n	8000682 <foc_loop+0x2e6>
         V_offset = (min3(V_u, V_v, V_w) + max3(V_u, V_v, V_w)) >> 1;
- 80006ea:	4440      	add	r0, r8
- 80006ec:	1040      	asrs	r0, r0, #1
+ 80006ec:	4440      	add	r0, r8
+ 80006ee:	1040      	asrs	r0, r0, #1
         D_u = ((V_u - V_offset) >> log2_V_per_D) + D_mid;
- 80006ee:	1a0e      	subs	r6, r1, r0
- 80006f0:	2180      	movs	r1, #128	; 0x80
- 80006f2:	0089      	lsls	r1, r1, #2
- 80006f4:	468c      	mov	ip, r1
+ 80006f0:	1a0e      	subs	r6, r1, r0
+ 80006f2:	2180      	movs	r1, #128	; 0x80
+ 80006f4:	0089      	lsls	r1, r1, #2
+ 80006f6:	468c      	mov	ip, r1
         D_v = ((V_v - V_offset) >> log2_V_per_D) + D_mid;
- 80006f6:	1a12      	subs	r2, r2, r0
+ 80006f8:	1a12      	subs	r2, r2, r0
         D_w = ((V_w - V_offset) >> log2_V_per_D) + D_mid;
- 80006f8:	1a1b      	subs	r3, r3, r0
+ 80006fa:	1a1b      	subs	r3, r3, r0
         D_u = ((V_u - V_offset) >> log2_V_per_D) + D_mid;
- 80006fa:	11b6      	asrs	r6, r6, #6
+ 80006fc:	11b6      	asrs	r6, r6, #6
         D_v = ((V_v - V_offset) >> log2_V_per_D) + D_mid;
- 80006fc:	1192      	asrs	r2, r2, #6
+ 80006fe:	1192      	asrs	r2, r2, #6
         D_w = ((V_w - V_offset) >> log2_V_per_D) + D_mid;
- 80006fe:	119b      	asrs	r3, r3, #6
+ 8000700:	119b      	asrs	r3, r3, #6
             TIM1->CCR1 = D_u;
- 8000700:	4930      	ldr	r1, [pc, #192]	; (80007c4 <foc_loop+0x428>)
+ 8000702:	4930      	ldr	r1, [pc, #192]	; (80007c4 <foc_loop+0x428>)
         D_u = ((V_u - V_offset) >> log2_V_per_D) + D_mid;
- 8000702:	4466      	add	r6, ip
+ 8000704:	4466      	add	r6, ip
         D_v = ((V_v - V_offset) >> log2_V_per_D) + D_mid;
- 8000704:	4462      	add	r2, ip
+ 8000706:	4462      	add	r2, ip
         D_w = ((V_w - V_offset) >> log2_V_per_D) + D_mid;
- 8000706:	4463      	add	r3, ip
+ 8000708:	4463      	add	r3, ip
             TIM1->CCR1 = D_u;
- 8000708:	b236      	sxth	r6, r6
+ 800070a:	b236      	sxth	r6, r6
             TIM1->CCR2 = D_v;
- 800070a:	b212      	sxth	r2, r2
+ 800070c:	b212      	sxth	r2, r2
             TIM1->CCR3 = D_w;
- 800070c:	b21b      	sxth	r3, r3
+ 800070e:	b21b      	sxth	r3, r3
             TIM1->CCR1 = D_u;
- 800070e:	634e      	str	r6, [r1, #52]	; 0x34
+ 8000710:	634e      	str	r6, [r1, #52]	; 0x34
             TIM1->CCR2 = D_v;
- 8000710:	638a      	str	r2, [r1, #56]	; 0x38
+ 8000712:	638a      	str	r2, [r1, #56]	; 0x38
             TIM1->CCR3 = D_w;
- 8000712:	63cb      	str	r3, [r1, #60]	; 0x3c
- 8000714:	e7b9      	b.n	800068a <foc_loop+0x2ee>
+ 8000714:	63cb      	str	r3, [r1, #60]	; 0x3c
+ 8000716:	e7b9      	b.n	800068c <foc_loop+0x2f0>
             revs -= 32768;
- 8000716:	4e23      	ldr	r6, [pc, #140]	; (80007a4 <foc_loop+0x408>)
- 8000718:	480d      	ldr	r0, [pc, #52]	; (8000750 <foc_loop+0x3b4>)
- 800071a:	46b4      	mov	ip, r6
- 800071c:	6802      	ldr	r2, [r0, #0]
- 800071e:	4462      	add	r2, ip
- 8000720:	6002      	str	r2, [r0, #0]
- 8000722:	e692      	b.n	800044a <foc_loop+0xae>
+ 8000718:	4e22      	ldr	r6, [pc, #136]	; (80007a4 <foc_loop+0x408>)
+ 800071a:	4d0c      	ldr	r5, [pc, #48]	; (800074c <foc_loop+0x3b0>)
+ 800071c:	46b4      	mov	ip, r6
+ 800071e:	6829      	ldr	r1, [r5, #0]
+ 8000720:	4461      	add	r1, ip
+ 8000722:	6029      	str	r1, [r5, #0]
+ 8000724:	e68e      	b.n	8000444 <foc_loop+0xa8>
         if(abs16(I_v) > I_phase) I_phase = abs16(I_v);
- 8000724:	464b      	mov	r3, r9
- 8000726:	2000      	movs	r0, #0
- 8000728:	5e18      	ldrsh	r0, [r3, r0]
- 800072a:	f000 fe47 	bl	80013bc <abs16>
- 800072e:	8030      	strh	r0, [r6, #0]
- 8000730:	e6c8      	b.n	80004c4 <foc_loop+0x128>
- 8000732:	46c0      	nop			; (mov r8, r8)
+ 8000726:	464b      	mov	r3, r9
+ 8000728:	2000      	movs	r0, #0
+ 800072a:	5e18      	ldrsh	r0, [r3, r0]
+ 800072c:	f000 fe46 	bl	80013bc <abs16>
+ 8000730:	8030      	strh	r0, [r6, #0]
+ 8000732:	e6c8      	b.n	80004c6 <foc_loop+0x12a>
  8000734:	20000330 	.word	0x20000330
  8000738:	200000d0 	.word	0x200000d0
  800073c:	48001400 	.word	0x48001400
  8000740:	200001b4 	.word	0x200001b4
  8000744:	200000d6 	.word	0x200000d6
- 8000748:	200000d4 	.word	0x200000d4
- 800074c:	200000d8 	.word	0x200000d8
- 8000750:	200000dc 	.word	0x200000dc
- 8000754:	fffff7fd 	.word	0xfffff7fd
+ 8000748:	200000d8 	.word	0x200000d8
+ 800074c:	200000dc 	.word	0x200000dc
+ 8000750:	fffff7fd 	.word	0xfffff7fd
+ 8000754:	200000d4 	.word	0x200000d4
  8000758:	200000c8 	.word	0x200000c8
  800075c:	200000a4 	.word	0x200000a4
  8000760:	200000a0 	.word	0x200000a0
@@ -1237,14 +1240,14 @@ void foc_loop() {
  800083a:	1d21      	adds	r1, r4, #4
  800083c:	480b      	ldr	r0, [pc, #44]	; (800086c <foc_loop+0x4d0>)
  800083e:	f003 f885 	bl	800394c <HAL_UART_Transmit_DMA>
- 8000842:	e72f      	b.n	80006a4 <foc_loop+0x308>
+ 8000842:	e730      	b.n	80006a6 <foc_loop+0x30a>
         if(abs16(I_w) > I_phase) I_phase = abs16(I_w);
  8000844:	4643      	mov	r3, r8
  8000846:	2000      	movs	r0, #0
  8000848:	5e18      	ldrsh	r0, [r3, r0]
  800084a:	f000 fdb7 	bl	80013bc <abs16>
  800084e:	8030      	strh	r0, [r6, #0]
- 8000850:	e642      	b.n	80004d8 <foc_loop+0x13c>
+ 8000850:	e643      	b.n	80004da <foc_loop+0x13e>
             I_q_des = p.uart_cmd[1] >> 1; 
  8000852:	4653      	mov	r3, sl
  8000854:	1040      	asrs	r0, r0, #1
@@ -2295,7 +2298,7 @@ int main(void) {
  8000e2a:	d165      	bne.n	8000ef8 <main+0x464>
     HAL_MultiProcessor_Init(&huart1, UART_ADDR, UART_WAKEUPMETHOD_ADDRESSMARK);
  8000e2c:	2280      	movs	r2, #128	; 0x80
- 8000e2e:	210b      	movs	r1, #11
+ 8000e2e:	210a      	movs	r1, #10
  8000e30:	0112      	lsls	r2, r2, #4
  8000e32:	0020      	movs	r0, r4
  8000e34:	f003 fb78 	bl	8004528 <HAL_MultiProcessor_Init>

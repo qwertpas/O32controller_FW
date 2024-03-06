@@ -212,7 +212,7 @@ void foc_loop() {
         // angles represented in [0,32767] (~91 per degree)
         m_angle = ((uint16_t)(p.spi_RX[0]) << 8) + p.spi_RX[1] + 16384;
         e_angle = (m_angle * PPAIRS - e_offset) & (32768 - 1); // convert to electrical angle and modulo
-        if (INVERT_MAG) e_angle *= -1;
+
 
         if (m_angle_prev < 8192 && m_angle > 24576) { // detect angle wraparound and increment a revolution
             revs -= 32768;
@@ -221,6 +221,12 @@ void foc_loop() {
         }
         cont_angle = m_angle + revs;
         m_angle_prev = m_angle;
+
+        if (INVERT_MAG){
+			e_angle *= -1;
+			cont_angle *= -1;
+
+		}
     }
 
     // FOC calcs
