@@ -12,13 +12,13 @@
 #include "stm32f031x6.h"
 #include "ntc.h"
 
-
 #define ADC_PER_VOLT 1241 // 4095/3.3
 #define UAMP_PER_ADC 52351
 
 #define ADC_FILT_LVL 4
 #define DQ_FILT_LVL 8
 #define TEMP_FILT_LVL 8
+#define VBUS_FILT_LVL 8
 
 #define Q16_2_3 ((uint16_t)43691)     // (2/3) * 2^16
 #define Q16_SQRT3_2 ((uint16_t)56756) // (sqrt(3)/2) * 2^16
@@ -114,6 +114,9 @@ static int16_t D_w = 0;
 
 static int16_t temp_pcb = 0;
 static int32_t temp_pcb_accum = 0;
+
+static int16_t vbus = 0;
+static int32_t vbus_accum = 0;
 
 static uint32_t count = 0;     // incremented every loop, reset at 100Hz
 static uint16_t loop_freq = 0; // Hz, calculated at 100Hz using count
@@ -362,6 +365,8 @@ void foc_loop() {
             encoder_res = p.uart_cmd[1];
         }
 
+        
+
 
         // p.uart_TX[0] = (uint8_t)(I_q_filt >> 7) & 0b01111111;
         // p.uart_TX[1] = (uint8_t)(I_q_filt >> 0) & 0b01111111;
@@ -379,12 +384,14 @@ void foc_loop() {
         p.uart_TX[5] = (uint8_t)(rpm >> (1+0)) & 0b01111111;
 
         p.uart_TX[6] = (uint8_t)(temp_coil >> 0) & 0b01111111;
+        p.uart_TX[7] = (uint8_t)(vbus >> 7) & 0b01111111;
+        p.uart_TX[8] = (uint8_t)(vbus >> 0) & 0b01111111;
 
 
-        p.uart_TX[7] = MIN_INT8;
+        // p.uart_TX[7] = MIN_INT8;
 
         RS485_SET_TX;
-        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 8);
+        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 9);
     }
 
 
@@ -403,7 +410,10 @@ void foc_slowloop(){
     	overtemp = 0;
     }
 
-	 rpm = ((cont_angle - cont_angle_prev) * 1000 * 60) >> 15; // should be accurate within reasonable RPM range if 32-bit
-	 cont_angle_prev = cont_angle;
+	rpm = ((cont_angle - cont_angle_prev) * 1000 * 60) >> 15; // should be accurate within reasonable RPM range if 32-bit
+	cont_angle_prev = cont_angle;
+
+	vbus = vbus_accum >> VBUS_FILT_LVL;
+	vbus_accum = vbus_accum - vbus + p.adc_vals[3];
 
 }
