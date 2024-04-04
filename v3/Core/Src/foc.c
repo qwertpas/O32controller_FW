@@ -239,6 +239,9 @@ void foc_loop() {
         // filter ADC values (https://stackoverflow.com/questions/38918530/simple-low-pass-filter-in-fixed-point)
         // phase currents are in adc units [-2048, 2047] (1 bit sign, 11 bit value)
         // to get current in milliamps, multiply by UAMP_PER_ADC then divide by 1000
+
+
+
         I_u = I_u_accum >> ADC_FILT_LVL;
         I_u_accum = I_u_accum - I_u + (p.adc_vals[4] - adc_U_offset);
 
@@ -264,11 +267,14 @@ void foc_loop() {
             Q16_cos_t = sin_lut[(63 - angle_lut) & (256 - 1)];
         }
 
+
         // some intermediate rounding, avg errors in Iq and Id are around 0.1%
         int16_t Q16_SQRT3_2_sin_t = (Q16_SQRT3_2 * Q16_sin_t) >> 16;
         int16_t Q16_SQRT3_2_cos_t = (Q16_SQRT3_2 * Q16_cos_t) >> 16;
         int16_t Q16_1_2_sin_t = (Q16_1_2 * Q16_sin_t) >> 16;
         int16_t Q16_1_2_cos_t = (Q16_1_2 * Q16_cos_t) >> 16;
+
+        /*
 
         I_d = (Q16_cos_t * I_u + (Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * I_v + (-Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * I_w) >> 16;
         I_q = (Q16_sin_t * I_u + (-Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * I_v + (Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * I_w) >> 16;
@@ -290,9 +296,16 @@ void foc_loop() {
         // PI+feedforward control loop
         // Voltage is scaled to [-32768, 32767]
         V_d = ((KP_d * I_d_error) >> 16) + ((KI_d * I_d_error_int) >> 16) + ((KF_d * I_d_des) >> 16);
-        V_q = ((KP_q * I_q_error) >> 16) + ((KI_q * I_q_error_int) >> 16) + ((KF_q * I_q_des) >> 16);
+        V_q = ((KP_q * I_q_error) >> 16) + ((KI_q * I_q_error_int) >> 16) + ((KF_q * I_q_des) >> 16); // ((1<<23)*256)>>16 = 32768
         
         
+        */
+
+        //bypass current calcs
+        V_d = 0;
+        V_q = I_q_des << 7;
+
+
         V_d = clip(V_d, -32768, 32767);
         V_q = clip(V_q, -32768, 32767);
 

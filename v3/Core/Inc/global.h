@@ -28,10 +28,11 @@
 
 // Motor parameters
 #define PPAIRS 7        // pole pairs
-#define INVERT_MAG 1    //invert=0 for red motor, invert=1 for green motor
+#define INVERT_MAG 1    //invert=0 for red motor, invert=1 for green, gray motor
 
-#define E_OFFSET 25900 //mag offset, differs for each motor. Set to zero to automatically find.
+#define E_OFFSET 15000 //mag offset, differs for each motor. Set to zero to automatically find.
 						//teststand A: 25900, leg A: 23800, leg B: 26000
+						//gray motor: A: 15000
 
 #define OVERTEMP_H 85 //disabled if coil temp goes above this
 #define OVERTEMP_L 70 //enabled again if coil temp drops below this
