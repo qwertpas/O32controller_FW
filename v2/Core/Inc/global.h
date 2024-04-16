@@ -21,14 +21,16 @@
 /* ============= START CONFIG ================= */
 
 // 4-bit address
-#define UART_ADDR 0x2
+#define UART_ADDR 0x5 //make sure to change E_OFFSET too when flashing different motor
 
 #define SELECTED_MODE FOC_MODE //SIXSTEP, FOC, ENCODER
-#define PWM_FREQ 40000 //kHz     //20kHz is tiny bit more efficient
+#define PWM_FREQ 20000 //kHz     //20kHz is more efficient, though can get slightly higher speed with higher freq
 
 // Motor parameters
 #define PPAIRS 7        // pole pairs
-#define INVERT_MAG 0    //invert=0 for red motor, invert=1 for green motor
+#define INVERT_MAG 1    //invert=0 for red motor, invert=1 for green motor
+
+#define E_OFFSET 0
 
 /* ============= END CONFIG ================= */
 
@@ -42,6 +44,10 @@
 /* Size of Transmission and receive buffer */
 #define I2CSIZE 2
 #define UARTSIZE 10
+#define UART_RX_SIZE 3
+
+#define UART_WATCHDOG_MS 100 //after this many milliseconds without receiving UART the motor will disable
+
 
 /* 6 ADC channels in total:
  * [0] ADC0: Phase V current
@@ -134,13 +140,16 @@ typedef struct {
 
     uint8_t spi_TX[2];
     uint8_t spi_RX[2];
-
-    uint8_t print_flag;
     uint8_t i2c_complete_flag;
-    uint8_t uart_idle;
+
+    uint8_t clock_1khz_flag;
     uint8_t adc_conversion_flag;
 
+    // uint8_t print_flag;
+    // uint8_t uart_idle;
+
     uint8_t uart_watchdog;
+    uint8_t uart_received_flag;
 } PeripherialStruct;
 extern PeripherialStruct p;
 

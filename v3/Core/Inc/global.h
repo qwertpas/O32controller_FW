@@ -21,7 +21,7 @@
 /* ============= START CONFIG ================= */
 
 // 4-bit address
-#define UART_ADDR 0xA //make sure to change E_OFFSET too when flashing different motor 
+#define UART_ADDR 0xB //make sure to change E_OFFSET too when flashing different motor
 
 #define SELECTED_MODE FOC_MODE //SIXSTEP, FOC, ENCODER
 #define PWM_FREQ 20000 //kHz     //20kHz is more efficient, though can get slightly higher speed with higher freq
@@ -30,9 +30,9 @@
 #define PPAIRS 7        // pole pairs
 #define INVERT_MAG 1    //invert=0 for red motor, invert=1 for green, gray motor
 
-#define E_OFFSET 15000 //mag offset, differs for each motor. Set to zero to automatically find.
+#define E_OFFSET 22519 //mag offset, differs for each motor. Set to zero to automatically find.
 						//teststand A: 25900, leg A: 23800, leg B: 26000
-						//gray motor: A: 15000
+						//gray motor: A: 15000, B: 22519
 
 #define OVERTEMP_H 85 //disabled if coil temp goes above this
 #define OVERTEMP_L 70 //enabled again if coil temp drops below this

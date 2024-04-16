@@ -2,6 +2,7 @@
     "files.associations": {
         "global.h": "c",
         "foc.h": "c",
-        "utils.h": "c"
+        "utils.h": "c",
+        "math.h": "c"
     }
 }
