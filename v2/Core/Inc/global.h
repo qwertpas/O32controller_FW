@@ -30,7 +30,7 @@
 #define PPAIRS 7        // pole pairs
 #define INVERT_MAG 1    //invert=0 for red motor, invert=1 for green motor
 
-#define E_OFFSET 0
+#define E_OFFSET 28700
 
 /* ============= END CONFIG ================= */
 
