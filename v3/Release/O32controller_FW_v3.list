@@ -494,7 +494,7 @@ void foc_startup() {
  800038c:	20000298 	.word	0x20000298
  8000390:	200000c0 	.word	0x200000c0
  8000394:	200000be 	.word	0x200000be
- 8000398:	00003a98 	.word	0x00003a98
+ 8000398:	000057f7 	.word	0x000057f7
 
 0800039c <foc_loop>:
 
@@ -2197,7 +2197,7 @@ int main(void) {
  8000d6a:	d165      	bne.n	8000e38 <main+0x464>
     HAL_MultiProcessor_Init(&huart1, UART_ADDR, UART_WAKEUPMETHOD_ADDRESSMARK);
  8000d6c:	2280      	movs	r2, #128	; 0x80
- 8000d6e:	210a      	movs	r1, #10
+ 8000d6e:	210b      	movs	r1, #11
  8000d70:	0112      	lsls	r2, r2, #4
  8000d72:	0020      	movs	r0, r4
  8000d74:	f003 fb78 	bl	8004468 <HAL_MultiProcessor_Init>

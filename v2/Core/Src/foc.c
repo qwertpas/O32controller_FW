@@ -9,6 +9,7 @@
 #include "comdef.h"
 #include "utils.h"
 #include <math.h>
+#include "stm32f031x6.h"
 
 #define ADC_PER_VOLT 1241 // 4095/3.3
 #define UAMP_PER_ADC 52351
@@ -16,6 +17,7 @@
 #define ADC_FILT_LVL 4
 #define DQ_FILT_LVL 8
 #define TEMP_FILT_LVL 8
+#define VBUS_FILT_LVL 8
 
 #define Q16_2_3 ((uint16_t)43691)     // (2/3) * 2^16
 #define Q16_SQRT3_2 ((uint16_t)56756) // (sqrt(3)/2) * 2^16
@@ -38,7 +40,7 @@
 #define KF_q (1<<23)
 
 #define D_min 0
-#define D_max (uint16_t)(128) //must be a power of 2
+#define D_max (uint16_t)(1024) //must be a power of 2
 #define D_mid (D_max>>1)
 #define log2_V_per_D LOG2((1<<16)/D_max)  // rightshift amount to map voltage [-32768, 32768) to [0, D_max)
 
@@ -63,9 +65,9 @@ static int16_t encoder_res = 7;
 
 // How much the adc values are off at no current, offset by 2048 to center zero
 // current at 0
-static int16_t adc_U_offset = 2048 + 3;
-static int16_t adc_V_offset = 2048 + -10;
-static int16_t adc_W_offset = 2048 + -4;
+static int16_t adc_U_offset = 2048;
+static int16_t adc_V_offset = 2048;
+static int16_t adc_W_offset = 2048;
 
 // units are in ADC counts [-2048,2047]
 static int16_t I_u = 0;
@@ -104,17 +106,18 @@ static int32_t V_u = 0;
 static int32_t V_v = 0;
 static int32_t V_w = 0;
 
-static int16_t D_u = 0;
-static int16_t D_v = 0;
-static int16_t D_w = 0;
+static volatile int16_t D_u = 0;
+static volatile int16_t D_v = 0;
+static volatile int16_t D_w = 0;
 
-static int16_t temp = 0;
-static int32_t temp_accum = 0;
+static int16_t temp_pcb = 0;
+static int32_t temp_pcb_accum = 0;
+
+static int16_t vbus = 0;
+static int32_t vbus_accum = 0;
 
 static uint32_t count = 0;     // incremented every loop, reset at 100Hz
 static uint16_t loop_freq = 0; // Hz, calculated at 100Hz using count
-
-static uint8_t uart_watchdog = 0;
 
 
 void foc_startup() {
@@ -127,6 +130,7 @@ void foc_startup() {
     HAL_TIM_Base_Start(&htim1);  // Replace htim1 with your TIM_HandleTypeDef instance
     TIM1->EGR = TIM_EGR_UG;
     htim1.Instance->RCR = 1; // Set RCR
+    TIM1->EGR = TIM_EGR_UG;
 
 
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
@@ -176,20 +180,19 @@ void foc_startup() {
 
     m_angle = (uint16_t)((p.spi_RX[0] << 8) + p.spi_RX[1] + 16384); // 0 to 32767
     m_angle_prev = m_angle;
-    e_offset = (m_angle * PPAIRS - e_offset) & (32768 - 1);         // convert to electrical angle, modulo 32768
+    if(E_OFFSET == 0){
+    	e_offset = (m_angle * PPAIRS - e_offset) & (32768 - 1);         // convert to electrical angle, modulo 32768
+    }else{
+    	e_offset = E_OFFSET;
+    }
 
-    HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
-    //    HAL_UART_Receive_DMA(&huart1, p.uart_RX, UARTSIZE);
+    HAL_UARTEx_ReceiveToIdle_IT(&huart1, p.uart_RX, UART_RX_SIZE);
 }
 
 void foc_loop() {
 
-    if(!p.adc_conversion_flag) return;
-    p.adc_conversion_flag = 0;
-
-
-    // LED_RED;
-    // LED_GREEN;
+//    if(!p.adc_conversion_flag) return;
+//    p.adc_conversion_flag = 0;
 
     count++;
 
@@ -203,7 +206,7 @@ void foc_loop() {
         // angles represented in [0,32767] (~91 per degree)
         m_angle = ((uint16_t)(p.spi_RX[0]) << 8) + p.spi_RX[1] + 16384;
         e_angle = (m_angle * PPAIRS - e_offset) & (32768 - 1); // convert to electrical angle and modulo
-        if (INVERT_MAG) e_angle *= -1;
+        
 
         if (m_angle_prev < 8192 && m_angle > 24576) { // detect angle wraparound and increment a revolution
             revs -= 32768;
@@ -212,6 +215,11 @@ void foc_loop() {
         }
         cont_angle = m_angle + revs;
         m_angle_prev = m_angle;
+
+        if (INVERT_MAG){
+            e_angle *= -1;
+            cont_angle *= -1;
+        }
     }
 
     // FOC calcs
@@ -252,6 +260,8 @@ void foc_loop() {
         int16_t Q16_1_2_sin_t = (Q16_1_2 * Q16_sin_t) >> 16;
         int16_t Q16_1_2_cos_t = (Q16_1_2 * Q16_cos_t) >> 16;
 
+        /*
+
         I_d = (Q16_cos_t * I_u + (Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * I_v + (-Q16_SQRT3_2_sin_t - Q16_1_2_cos_t) * I_w) >> 16;
         I_q = (Q16_sin_t * I_u + (-Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * I_v + (Q16_SQRT3_2_cos_t - Q16_1_2_sin_t) * I_w) >> 16;
         I_d = (I_d * Q16_2_3) >> 15;
@@ -274,7 +284,14 @@ void foc_loop() {
         V_d = ((KP_d * I_d_error) >> 16) + ((KI_d * I_d_error_int) >> 16) + ((KF_d * I_d_des) >> 16);
         V_q = ((KP_q * I_q_error) >> 16) + ((KI_q * I_q_error_int) >> 16) + ((KF_q * I_q_des) >> 16);
         
+
+        */
+
+       //bypass current calcs
+        V_d = 0;
+        V_q = I_q_des << 7;
         
+
         V_d = clip(V_d, -32768, 32767);
         V_q = clip(V_q, -32768, 32767);
 
@@ -321,36 +338,22 @@ void foc_loop() {
 
     // temp low pass filter
     {
-        temp = temp_accum >> TEMP_FILT_LVL;
-        temp_accum = temp_accum - temp + p.adc_vals[4];
+        temp_pcb = temp_pcb_accum >> TEMP_FILT_LVL;
+        temp_pcb_accum = temp_pcb_accum - temp_pcb + p.adc_vals[4];
     }
 
 
-    if (p.uart_idle) {
+    if (p.uart_received_flag) {
+        p.uart_received_flag = 0;
 
-        // clear the uart buffer
-        uint8_t temp_buffer[UARTSIZE];
-        while (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE)) {
-            HAL_UART_Receive(&huart1, temp_buffer, 1, 1);
-        }
-
-        // check which of 3 bytes is the cmd and concat 14 data bytes into int16_t (signed)
-        if (p.uart_RX[0] & 0x80) {
-            p.uart_cmd[0] = p.uart_RX[0] & CMD_MASK;
-            p.uart_cmd[1] = (p.uart_RX[1] << 7) | (p.uart_RX[2]);
-        } else if (p.uart_RX[1] & 0x80) {
-            p.uart_cmd[0] = p.uart_RX[1] & CMD_MASK;
-            p.uart_cmd[1] = (p.uart_RX[2] << 7) | (p.uart_RX[0]);
-        } else {
-            p.uart_cmd[0] = p.uart_RX[2] & CMD_MASK;
-            p.uart_cmd[1] = (p.uart_RX[0] << 7) | (p.uart_RX[1]);
-        }
+        p.uart_cmd[0] = p.uart_RX[0] & CMD_MASK;
+        p.uart_cmd[1] = (p.uart_RX[1] << 7) | (p.uart_RX[2]);
         p.uart_cmd[1] = pad14(p.uart_cmd[1]);
 
         if (p.uart_cmd[0] == CMD_SET_VOLTAGE) {
             reverse = (p.uart_cmd[1] >> 13) & 1;
             mag = reverse ? (~p.uart_cmd[1]) + 1 : p.uart_cmd[1]; // If negative, take the absolute value assuming two's complement
-            I_q_des = p.uart_cmd[1] >> 2;
+            I_q_des = p.uart_cmd[1] >> 1; 
         } else if (p.uart_cmd[0] == CMD_SET_CURRENT) {
             I_max = p.uart_cmd[1];
         } else if (p.uart_cmd[0] == CMD_SET_POSITION) {
@@ -361,64 +364,36 @@ void foc_loop() {
             encoder_res = p.uart_cmd[1];
         }
 
-        // p.uart_TX[0] = (uint8_t)(p.uart_cmd[1] >> 7) & 0b01111111;
-        // p.uart_TX[1] = (uint8_t)(p.uart_cmd[1] >> 0) & 0b01111111;
-        // p.uart_TX[2] = (uint8_t)(cont_angle >> (encoder_res + 7)) & 0b01111111;
-        // p.uart_TX[3] = (uint8_t)(cont_angle >> encoder_res) & 0b01111111;
-        // p.uart_TX[4] = MIN_INT8;
+        p.uart_TX[0] = (uint8_t)(cont_angle >> 21) & 0b01111111;
+        p.uart_TX[1] = (uint8_t)(cont_angle >> 14) & 0b01111111;
+        p.uart_TX[2] = (uint8_t)(cont_angle >> 07) & 0b01111111;
+        p.uart_TX[3] = (uint8_t)(cont_angle >> 00) & 0b01111111;
 
-        p.uart_TX[0] = (uint8_t)(I_q >> 7) & 0b01111111;
-        p.uart_TX[1] = (uint8_t)(I_q >> 0) & 0b01111111;
-        p.uart_TX[2] = (uint8_t)(I_d >> 7) & 0b01111111;
-        p.uart_TX[3] = (uint8_t)(I_d >> 0) & 0b01111111;
-        p.uart_TX[4] = (uint8_t)(temp >> 7) & 0b01111111;
-        p.uart_TX[5] = (uint8_t)(temp >> 0) & 0b01111111;
+        p.uart_TX[4] = (uint8_t)(rpm >> (1+7)) & 0b01111111;
+        p.uart_TX[5] = (uint8_t)(rpm >> (1+0)) & 0b01111111;
 
-        // p.uart_TX[0] = (uint8_t)(V_u >> 9) & 0b01111111;
-        // p.uart_TX[1] = (uint8_t)(V_u >> 2) & 0b01111111;
-        // p.uart_TX[2] = (uint8_t)(V_v >> 9) & 0b01111111;
-        // p.uart_TX[3] = (uint8_t)(V_v >> 2) & 0b01111111;
-        // p.uart_TX[4] = (uint8_t)(V_w >> 9) & 0b01111111;
-        // p.uart_TX[5] = (uint8_t)(V_w >> 2) & 0b01111111;
-        // p.uart_TX[6] = (uint8_t)((D_u+1) >> 0) & 0b01111111;
-        // p.uart_TX[7] = (uint8_t)((D_v+1) >> 0) & 0b01111111;
-        // p.uart_TX[8] = (uint8_t)((D_w+1) >> 0) & 0b01111111;
-
-        // uint8_t checksum = 0;
-        // for(int i=0; i<8; i++){
-        //     checksum += p.uart_TX[i];
-        // }
-        // p.uart_TX[8] = (uint8_t)(checksum) & 0b01111111;
-
-        p.uart_TX[4] = MIN_INT8;
+        p.uart_TX[6] = (uint8_t)(temp_pcb >> 0) & 0b01111111;
+        p.uart_TX[7] = (uint8_t)(vbus >> 7) & 0b01111111;
+        p.uart_TX[8] = (uint8_t)(vbus >> 0) & 0b01111111;
 
         
-
         RS485_SET_TX;
-        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 10); // DMA channel 4
-        p.uart_idle = 0;
+        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 9);
+
     }
 
-    if (p.print_flag) { // 100Hz clock
+	LED_GREEN;
 
-        rpm = ((cont_angle - cont_angle_prev) * 100 * 60) >> 15; // should be accurate within reasonable RPM range if 32-bit
-        cont_angle_prev = cont_angle;
+    
+}
 
-        loop_freq = count * 100;
-        count = 0;
+void foc_slowloop() {
 
-        uart_watchdog++;
-        if (uart_watchdog > 5) {
-            uart_watchdog = 5;
-        }
+    rpm = ((cont_angle - cont_angle_prev) * 1000 * 60) >> 15; // should be accurate within reasonable RPM range if 32-bit
+    cont_angle_prev = cont_angle;
 
-        // uint8_t print_TX[50];
-        // sprintf((char*) print_TX, " freq: %d\n I_d_filt: %d\n I_q_filt: %d\n \t", loop_freq, I_d_filt, I_q_filt);
-        // RS485_SET_TX;
-        // HAL_UART_Transmit_DMA(&huart1, print_TX, 20);
+    vbus = vbus_accum >> VBUS_FILT_LVL;
+    vbus_accum = vbus_accum - vbus + p.adc_vals[3];
 
-        p.print_flag = 0;
-    }
-    // LED_GREEN;
 }
 

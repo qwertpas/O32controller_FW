@@ -94,7 +94,8 @@ void encoder_loop() {
     }
 
 
-    if (p.uart_idle) {
+    if (p.uart_received_flag) {
+        p.uart_received_flag = 0;
 
         // clear the uart buffer
         uint8_t temp_buffer[UARTSIZE];
@@ -140,10 +141,10 @@ void encoder_loop() {
 
         RS485_SET_TX;
         HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 4); // DMA channel 4
-        p.uart_idle = 0;
+        // p.uart_idle = 0;
     }
 
-    if (p.print_flag) { // 100Hz clock
+    if (p.clock_1khz_flag) { // 100Hz clock
 
         rpm = ((cont_angle - cont_angle_prev) * 100 * 60) >> 15; // should be accurate within reasonable RPM range if 32-bit
         cont_angle_prev = cont_angle;
@@ -157,7 +158,7 @@ void encoder_loop() {
             // duty = 0;
         }
 
-        p.print_flag = 0;
+        p.clock_1khz_flag = 0;
     }
     LED_GREEN;
 }

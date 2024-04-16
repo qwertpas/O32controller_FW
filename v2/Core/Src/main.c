@@ -47,9 +47,7 @@ DMA_HandleTypeDef hdma_usart1_tx;
 
 /* USER CODE BEGIN PV */
 
-PeripherialStruct p;
-
-int first_update = 1;
+PeripherialStruct p = {0};
 
 /* USER CODE END PV */
 
@@ -106,6 +104,7 @@ int main(void) {
     /* Initialize all configured peripherals */
     MX_GPIO_Init();
     MX_DMA_Init();
+    HAL_Delay(10);
     MX_I2C1_Init();
     MX_ADC_Init();
     MX_SPI1_Init();
@@ -146,8 +145,6 @@ int main(void) {
 
     while (1) {
 
-        LED_GREEN;
-
         switch(SELECTED_MODE){
         case SIXSTEP_MODE:
             sixstep_loop();
@@ -160,6 +157,31 @@ int main(void) {
             break;
         default:
             break;
+    }
+
+    if(p.clock_1khz_flag){ //watchdog checks if UART has been updated
+        p.clock_1khz_flag = 0;
+
+        switch (SELECTED_MODE) {
+        case SIXSTEP_MODE:
+            sixstep_slowloop();
+            break;
+        case FOC_MODE:
+            foc_slowloop();
+            break;
+        case ENCODER_MODE:
+            break;
+        default:
+            break;
+        }
+
+
+        p.uart_watchdog++;
+        if (p.uart_watchdog >= UART_WATCHDOG_MS) {
+            p.uart_watchdog = UART_WATCHDOG_MS;
+            DISABLE_DRIVE;
+            LED_RED;
+        }
     }
 
         /* USER CODE END WHILE */
@@ -421,8 +443,8 @@ static void MX_TIM1_Init(void) {
     if (HAL_TIM_SlaveConfigSynchro(&htim1, &sSlaveConfig) != HAL_OK) {
         Error_Handler();
     }
-    sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
-    sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_ENABLE;
+    sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+    sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
     if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK) {
         Error_Handler();
     }
@@ -445,7 +467,7 @@ static void MX_TIM1_Init(void) {
     sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
     sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
     sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-    sBreakDeadTimeConfig.DeadTime = 20;
+    sBreakDeadTimeConfig.DeadTime = 25;
     sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
     sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
     sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
@@ -483,7 +505,7 @@ static void MX_TIM2_Init(void) {
     htim2.Instance = TIM2;
     htim2.Init.Prescaler = 63;
     htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-    htim2.Init.Period = 10000;
+    htim2.Init.Period = 999; //100hz clock
     htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
     htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
     if (HAL_TIM_Base_Init(&htim2) != HAL_OK) {
@@ -518,7 +540,7 @@ static void MX_USART1_UART_Init(void) {
 
     /* USER CODE END USART1_Init 1 */
     huart1.Instance = USART1;
-    huart1.Init.BaudRate = 115200;
+    huart1.Init.BaudRate = 1000000;
     huart1.Init.WordLength = UART_WORDLENGTH_8B;
     huart1.Init.StopBits = UART_STOPBITS_1;
     huart1.Init.Parity = UART_PARITY_NONE;
@@ -532,7 +554,7 @@ static void MX_USART1_UART_Init(void) {
     }
     /* USER CODE BEGIN USART1_Init 2 */
 
-    __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE); // enable idle line interrupt
+    // __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE); // enable idle line interrupt
 
     /* USER CODE END USART1_Init 2 */
 }
@@ -604,23 +626,44 @@ static void MX_GPIO_Init(void) {
 // Callback whenever a timer rolls over
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     if (htim == &htim2) { // 100Hz
-        p.print_flag = 1;
+        p.clock_1khz_flag = 1;
     }
 }
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) { // gets called before all bits finish
-    p.uart_watchdog = 0;
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
+    p.uart_received_flag = 1; //commutation loop will read and clear
+
+    if(p.uart_watchdog >= UART_WATCHDOG_MS){ //if watchdog has disabled motor, enable it again
+       ENABLE_DRIVE;
+    }
+
+//    RS485_SET_TX;
+//    HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 9);
+
+//    HAL_UARTEx_ReceiveToIdle_IT(&huart1, p.uart_RX, UART_RX_SIZE);
+    p.uart_watchdog = 0; //resets watchdog
 }
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
     RS485_SET_RX;
-    HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
-
+    HAL_UARTEx_ReceiveToIdle_IT(&huart1, p.uart_RX, UART_RX_SIZE);
 }
 
-void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) { // receive overrun error happens once in a while, just restart RX
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) { // shouldn't happen but just in case of overrun, restart RX
+
+    volatile uint32_t errorcode = huart->ErrorCode;
+
+    // clear the uart buffer
+    uint8_t temp_buffer[100];
+    while (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE)) {
+        HAL_UART_Receive(&huart1, temp_buffer, 1, 1);
+    }
+
     RS485_SET_RX;
-    HAL_UART_Receive_IT(&huart1, p.uart_RX, UARTSIZE);
+    HAL_UARTEx_ReceiveToIdle_IT(&huart1, p.uart_RX, UART_RX_SIZE);
+
+
+
     LED_RED;
 }
 
