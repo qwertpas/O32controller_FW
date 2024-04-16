@@ -21,7 +21,7 @@
 /* ============= START CONFIG ================= */
 
 // 4-bit address
-#define UART_ADDR 0x5 //make sure to change E_OFFSET too when flashing different motor
+#define UART_ADDR 0xA //make sure to change E_OFFSET too when flashing different motor
 
 #define SELECTED_MODE FOC_MODE //SIXSTEP, FOC, ENCODER
 #define PWM_FREQ 20000 //kHz     //20kHz is more efficient, though can get slightly higher speed with higher freq
