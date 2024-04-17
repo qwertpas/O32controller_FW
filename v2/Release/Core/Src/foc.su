@@ -1,3 +1,3 @@
-../Core/Src/foc.c:123:6:foc_startup	48	static
-../Core/Src/foc.c:192:6:foc_loop	64	static
-../Core/Src/foc.c:401:6:foc_slowloop	8	static
+../Core/Src/foc.c:128:6:foc_startup	48	static
+../Core/Src/foc.c:198:6:foc_loop	64	static
+../Core/Src/foc.c:416:6:foc_slowloop	8	static

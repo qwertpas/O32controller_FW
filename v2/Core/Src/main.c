@@ -257,13 +257,16 @@ static void MX_ADC_Init(void) {
     hadc.Init.Resolution = ADC_RESOLUTION_12B;
     hadc.Init.DataAlign = ADC_DATAALIGN_RIGHT;
     hadc.Init.ScanConvMode = ADC_SCAN_DIRECTION_FORWARD;
-    hadc.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+    // hadc.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+    hadc.Init.EOCSelection = ADC_EOC_SEQ_CONV;
+
     hadc.Init.LowPowerAutoWait = DISABLE;
     hadc.Init.LowPowerAutoPowerOff = DISABLE;
     hadc.Init.ContinuousConvMode = DISABLE;
     hadc.Init.DiscontinuousConvMode = DISABLE;
-    hadc.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T1_TRGO;
-    hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
+    hadc.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+    // hadc.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T1_TRGO;
+    // hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
     hadc.Init.DMAContinuousRequests = DISABLE;
     hadc.Init.Overrun = ADC_OVR_DATA_PRESERVED;
     if (HAL_ADC_Init(&hadc) != HAL_OK) {

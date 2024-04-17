@@ -16,8 +16,12 @@
 
 #define ADC_FILT_LVL 4
 #define DQ_FILT_LVL 8
-#define TEMP_FILT_LVL 8
-#define VBUS_FILT_LVL 8
+// #define TEMP_FILT_LVL 2
+#define TEMP_FILT_LVL 6
+#define VBUS_FILT_LVL 6
+
+#define ANGLE_FILT_LVL 8
+
 
 #define Q16_2_3 ((uint16_t)43691)     // (2/3) * 2^16
 #define Q16_SQRT3_2 ((uint16_t)56756) // (sqrt(3)/2) * 2^16
@@ -52,6 +56,7 @@ static uint16_t m_angle = 0;
 static uint16_t m_angle_prev = 0;
 static int32_t revs = 0;
 static int32_t cont_angle = 0;
+static int32_t cont_angle_accum = 0;
 static int32_t cont_angle_prev = 0;
 static int32_t rpm = 0;
 
@@ -179,6 +184,7 @@ void foc_startup() {
     TIM1->CCR3 = 0;
 
     m_angle = (uint16_t)((p.spi_RX[0] << 8) + p.spi_RX[1] + 16384); // 0 to 32767
+
     m_angle_prev = m_angle;
     if(E_OFFSET == 0){
     	e_offset = (m_angle * PPAIRS - e_offset) & (32768 - 1);         // convert to electrical angle, modulo 32768
@@ -213,8 +219,17 @@ void foc_loop() {
         } else if (m_angle < 8192 && m_angle_prev > 24576) {
             revs += 32768;
         }
+
+
+        // int32_t cont_angle_raw = m_angle + revs;
         cont_angle = m_angle + revs;
+
+        // cont_angle = cont_angle_accum >> ANGLE_FILT_LVL;
+        // cont_angle_accum = cont_angle_accum - cont_angle + cont_angle_raw;
+        
+
         m_angle_prev = m_angle;
+
 
         if (INVERT_MAG){
             e_angle *= -1;
@@ -224,7 +239,7 @@ void foc_loop() {
 
     // FOC calcs
     {
-        // HAL_ADC_Start_DMA(&hadc, (uint32_t *)p.adc_vals, NBR_ADC);
+//        HAL_ADC_Start_DMA(&hadc, (uint32_t *)p.adc_vals, NBR_ADC);
 
         // filter ADC values (https://stackoverflow.com/questions/38918530/simple-low-pass-filter-in-fixed-point)
         // phase currents are in adc units [-2048, 2047] (1 bit sign, 11 bit value)
@@ -374,7 +389,7 @@ void foc_loop() {
             p.uart_TX[4] = (uint8_t)(rpm >> (1+7)) & 0b01111111;
             p.uart_TX[5] = (uint8_t)(rpm >> (1+0)) & 0b01111111;
 
-            p.uart_TX[6] = (uint8_t)((((uint8_t)(p.uart_RX[0] + p.uart_RX[1] + p.uart_RX[2])) & 0b01111111) >> 0) & 0b01111111;
+            p.uart_TX[6] = (uint8_t)(temp_pcb) & 0b01111111;
             p.uart_TX[7] = (uint8_t)(vbus >> 7) & 0b01111111;
             p.uart_TX[8] = (uint8_t)(vbus >> 0) & 0b01111111;
             p.uart_TX[9] = MIN_INT8;
