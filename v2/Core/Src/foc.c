@@ -365,26 +365,32 @@ void foc_loop() {
             } else if (p.uart_cmd[0] == CMD_GET_POSITION) {
                 encoder_res = p.uart_cmd[1];
             }
+
+            p.uart_TX[0] = (uint8_t)(cont_angle >> 21) & 0b01111111;
+            p.uart_TX[1] = (uint8_t)(cont_angle >> 14) & 0b01111111;
+            p.uart_TX[2] = (uint8_t)(cont_angle >> 07) & 0b01111111;
+            p.uart_TX[3] = (uint8_t)(cont_angle >> 00) & 0b01111111;
+
+            p.uart_TX[4] = (uint8_t)(rpm >> (1+7)) & 0b01111111;
+            p.uart_TX[5] = (uint8_t)(rpm >> (1+0)) & 0b01111111;
+
+            p.uart_TX[6] = (uint8_t)((((uint8_t)(p.uart_RX[0] + p.uart_RX[1] + p.uart_RX[2])) & 0b01111111) >> 0) & 0b01111111;
+            p.uart_TX[7] = (uint8_t)(vbus >> 7) & 0b01111111;
+            p.uart_TX[8] = (uint8_t)(vbus >> 0) & 0b01111111;
+            p.uart_TX[9] = MIN_INT8;
+            
+            RS485_SET_TX;
+            HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 10);
+
             LED_GREEN;
         }else{
             LED_RED;
+
+            RS485_SET_RX;
+            HAL_UARTEx_ReceiveToIdle_IT(&huart1, p.uart_RX, UART_RX_SIZE);
         }
 
-        p.uart_TX[0] = (uint8_t)(cont_angle >> 21) & 0b01111111;
-        p.uart_TX[1] = (uint8_t)(cont_angle >> 14) & 0b01111111;
-        p.uart_TX[2] = (uint8_t)(cont_angle >> 07) & 0b01111111;
-        p.uart_TX[3] = (uint8_t)(cont_angle >> 00) & 0b01111111;
-
-        p.uart_TX[4] = (uint8_t)(rpm >> (1+7)) & 0b01111111;
-        p.uart_TX[5] = (uint8_t)(rpm >> (1+0)) & 0b01111111;
-
-        p.uart_TX[6] = (uint8_t)((((uint8_t)(p.uart_RX[0] + p.uart_RX[1] + p.uart_RX[2])) & 0b01111111) >> 0) & 0b01111111;
-        p.uart_TX[7] = (uint8_t)(vbus >> 7) & 0b01111111;
-        p.uart_TX[8] = (uint8_t)(vbus >> 0) & 0b01111111;
         
-        RS485_SET_TX;
-        HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 9);
-
     }
 
 	// LED_GREEN;
