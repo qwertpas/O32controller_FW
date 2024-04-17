@@ -30,7 +30,7 @@
 #define PPAIRS 7        // pole pairs
 #define INVERT_MAG 1    //invert=0 for red motor, invert=1 for green motor
 
-#define E_OFFSET 28700
+#define E_OFFSET 28700 //A:28700, B:1300
 
 /* ============= END CONFIG ================= */
 
@@ -44,7 +44,7 @@
 /* Size of Transmission and receive buffer */
 #define I2CSIZE 2
 #define UARTSIZE 10
-#define UART_RX_SIZE 3
+#define UART_RX_SIZE 4
 
 #define UART_WATCHDOG_MS 100 //after this many milliseconds without receiving UART the motor will disable
 

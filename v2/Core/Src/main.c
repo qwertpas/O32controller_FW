@@ -631,6 +631,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 }
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
+    if(Size != UART_RX_SIZE){
+        HAL_UARTEx_ReceiveToIdle_IT(&huart1, p.uart_RX, UART_RX_SIZE);
+        return;
+    }
     p.uart_received_flag = 1; //commutation loop will read and clear
 
     if(p.uart_watchdog >= UART_WATCHDOG_MS){ //if watchdog has disabled motor, enable it again

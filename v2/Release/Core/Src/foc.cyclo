@@ -1,3 +1,3 @@
 ../Core/Src/foc.c:123:6:foc_startup	2
-../Core/Src/foc.c:192:6:foc_loop	12
-../Core/Src/foc.c:390:6:foc_slowloop	1
+../Core/Src/foc.c:192:6:foc_loop	13
+../Core/Src/foc.c:395:6:foc_slowloop	1

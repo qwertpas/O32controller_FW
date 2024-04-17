@@ -106,9 +106,9 @@ static int32_t V_u = 0;
 static int32_t V_v = 0;
 static int32_t V_w = 0;
 
-static volatile int16_t D_u = 0;
-static volatile int16_t D_v = 0;
-static volatile int16_t D_w = 0;
+static int16_t D_u = 0;
+static int16_t D_v = 0;
+static int16_t D_w = 0;
 
 static int16_t temp_pcb = 0;
 static int32_t temp_pcb_accum = 0;
@@ -350,18 +350,24 @@ void foc_loop() {
         p.uart_cmd[1] = (p.uart_RX[1] << 7) | (p.uart_RX[2]);
         p.uart_cmd[1] = pad14(p.uart_cmd[1]);
 
-        if (p.uart_cmd[0] == CMD_SET_VOLTAGE) {
-            reverse = (p.uart_cmd[1] >> 13) & 1;
-            mag = reverse ? (~p.uart_cmd[1]) + 1 : p.uart_cmd[1]; // If negative, take the absolute value assuming two's complement
-            I_q_des = p.uart_cmd[1] >> 1; 
-        } else if (p.uart_cmd[0] == CMD_SET_CURRENT) {
-            I_max = p.uart_cmd[1];
-        } else if (p.uart_cmd[0] == CMD_SET_POSITION) {
-            cont_angle_des = p.uart_cmd[1] << 13;
-        } else if (p.uart_cmd[0] == CMD_SET_SPEED) {
-            // implement later
-        } else if (p.uart_cmd[0] == CMD_GET_POSITION) {
-            encoder_res = p.uart_cmd[1];
+        //only accept commands if checksum
+        if(p.uart_RX[3] == (((uint8_t)(p.uart_RX[0] + p.uart_RX[1] + p.uart_RX[2])) & 0b01111111)){
+            if (p.uart_cmd[0] == CMD_SET_VOLTAGE) {
+                reverse = (p.uart_cmd[1] >> 13) & 1;
+                mag = reverse ? (~p.uart_cmd[1]) + 1 : p.uart_cmd[1]; // If negative, take the absolute value assuming two's complement
+                I_q_des = p.uart_cmd[1] >> 1; 
+            } else if (p.uart_cmd[0] == CMD_SET_CURRENT) {
+                I_max = p.uart_cmd[1];
+            } else if (p.uart_cmd[0] == CMD_SET_POSITION) {
+                cont_angle_des = p.uart_cmd[1] << 13;
+            } else if (p.uart_cmd[0] == CMD_SET_SPEED) {
+                // implement later
+            } else if (p.uart_cmd[0] == CMD_GET_POSITION) {
+                encoder_res = p.uart_cmd[1];
+            }
+            LED_GREEN;
+        }else{
+            LED_RED;
         }
 
         p.uart_TX[0] = (uint8_t)(cont_angle >> 21) & 0b01111111;
@@ -372,17 +378,16 @@ void foc_loop() {
         p.uart_TX[4] = (uint8_t)(rpm >> (1+7)) & 0b01111111;
         p.uart_TX[5] = (uint8_t)(rpm >> (1+0)) & 0b01111111;
 
-        p.uart_TX[6] = (uint8_t)(temp_pcb >> 0) & 0b01111111;
+        p.uart_TX[6] = (uint8_t)((((uint8_t)(p.uart_RX[0] + p.uart_RX[1] + p.uart_RX[2])) & 0b01111111) >> 0) & 0b01111111;
         p.uart_TX[7] = (uint8_t)(vbus >> 7) & 0b01111111;
         p.uart_TX[8] = (uint8_t)(vbus >> 0) & 0b01111111;
-
         
         RS485_SET_TX;
         HAL_UART_Transmit_DMA(&huart1, p.uart_TX, 9);
 
     }
 
-	LED_GREEN;
+	// LED_GREEN;
 
     
 }
