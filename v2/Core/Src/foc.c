@@ -21,6 +21,7 @@
 #define VBUS_FILT_LVL 6
 
 #define ANGLE_FILT_LVL 8
+#define RPM_FILT_LVL 4 //timescale is 100Hz
 
 
 #define Q16_2_3 ((uint16_t)43691)     // (2/3) * 2^16
@@ -59,6 +60,7 @@ static int32_t cont_angle = 0;
 static int32_t cont_angle_accum = 0;
 static int32_t cont_angle_prev = 0;
 static int32_t rpm = 0;
+static int32_t rpm_accum = 0;
 
 static uint16_t e_offset = 0;
 static uint16_t e_angle = 0;
@@ -415,7 +417,11 @@ void foc_loop() {
 
 void foc_slowloop() {
 
-    rpm = ((cont_angle - cont_angle_prev) * 1000 * 60) >> 15; // should be accurate within reasonable RPM range if 32-bit
+    int32_t rpm_raw = ((cont_angle - cont_angle_prev) * 1000 * 60) >> 15; // should be accurate within reasonable RPM range if 32-bit
+
+    rpm = rpm_accum >> RPM_FILT_LVL;
+    rpm_accum = rpm_accum - rpm + rpm_raw;
+
     cont_angle_prev = cont_angle;
 
     vbus = vbus_accum >> VBUS_FILT_LVL;
